@@ -49,3 +49,14 @@ pos:
     paper-width-mm: 80
     auto-cut: true
 
+# =====================================================================
+# Safaricom M-Pesa Daraja STK Push Settings
+# =====================================================================
+mpesa:
+  consumer-key: ${MPESA_CONSUMER_KEY:sandbox_key}
+  consumer-secret: ${MPESA_CONSUMER_SECRET:sandbox_secret}
+  business-shortcode: ${MPESA_SHORTCODE:174379}
+  passkey: ${MPESA_PASSKEY:bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919}
+  callback-url: ${MPESA_CALLBACK_URL:http://localhost:8080/api/v1/payments/mpesa/callback}
+  mock-mode: true # Auto-confirms PIN prompt in local development/demo
+

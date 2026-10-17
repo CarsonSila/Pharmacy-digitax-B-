@@ -9,8 +9,8 @@
   <style>
     @media print {
       body * { visibility: hidden; }
-      #receipt-modal, #printable-receipt, #printable-receipt * { visibility: visible; }
-      #printable-receipt {
+      #receipt-modal, #printable-receipt, #printable-receipt *, #printable-z-report, #printable-z-report * { visibility: visible; }
+      #printable-receipt, #printable-z-report {
         position: absolute; left: 0; top: 0; width: 80mm;
         margin: 0; padding: 5px; font-family: monospace; font-size: 11px;
       }
@@ -23,30 +23,46 @@
 <body class="bg-slate-100 text-slate-800 h-screen flex flex-col font-sans select-none overflow-hidden">
 
   <!-- Top Navigation Header -->
-  <header class="bg-emerald-700 text-white px-6 py-3 flex items-center justify-between shadow-md">
+  <header class="bg-emerald-700 text-white px-6 py-2.5 flex items-center justify-between shadow-md">
     <div class="flex items-center space-x-3">
       <div class="w-10 h-10 rounded-lg bg-white text-emerald-700 flex items-center justify-center font-black text-xl shadow">
         <i class="fa-solid fa-mortar-pestle"></i>
       </div>
       <div>
-        <h1 class="text-lg font-bold tracking-tight">PharmaCore POS <span class="text-xs bg-emerald-900 text-emerald-200 px-2 py-0.5 rounded-full uppercase ml-1">v1.0 Tax Edition</span></h1>
+        <h1 class="text-lg font-bold tracking-tight">PharmaCore POS <span class="text-xs bg-emerald-900 text-emerald-200 px-2 py-0.5 rounded-full uppercase ml-1">v1.2 Tax Edition</span></h1>
         <p class="text-xs text-emerald-200">Moi Avenue Branch, Nairobi | Till: POS-01</p>
       </div>
     </div>
 
-    <!-- Live Compliance Status Indicator -->
-    <div class="flex items-center space-x-6 text-sm">
+    <!-- Quick Operations & Actions -->
+    <div class="flex items-center space-x-3 text-sm">
+      <!-- Live DigiTax Indicator -->
       <div class="flex items-center space-x-2 bg-emerald-800/80 px-3 py-1.5 rounded-lg border border-emerald-600">
         <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
         <span class="font-medium text-xs">DigiTax eTIMS: <strong class="text-emerald-200">ONLINE (AUTO-FISCAL)</strong></span>
       </div>
 
-      <div class="flex items-center space-x-2 text-xs text-emerald-100">
-        <i class="fa-solid fa-user-doctor"></i>
-        <span>Cashier: <strong>Dr. Jane Mwangi</strong></span>
-      </div>
+      <!-- Inventory Expiry Alert Pill -->
+      <button id="nav-alerts-btn" class="flex items-center space-x-1.5 bg-amber-500 hover:bg-amber-600 text-amber-950 font-bold px-3 py-1.5 rounded-lg text-xs transition shadow-sm">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>Stock Alerts</span>
+        <span id="nav-alert-badge" class="bg-amber-950 text-white text-[10px] px-1.5 py-0.2 rounded-full">0</span>
+      </button>
 
-      <div id="live-clock" class="text-xs font-mono bg-emerald-900/60 px-2.5 py-1 rounded border border-emerald-700">--:--:--</div>
+      <!-- Credit Note / Return Button -->
+      <button id="nav-refund-btn" class="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-900 text-white font-medium px-3 py-1.5 rounded-lg text-xs transition shadow-sm">
+        <i class="fa-solid fa-rotate-left"></i>
+        <span>Returns / CN</span>
+      </button>
+
+      <!-- End of Day Z-Report Button -->
+      <button id="nav-zreport-btn" class="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition shadow-sm">
+        <i class="fa-solid fa-file-invoice-dollar"></i>
+        <span>Daily Z-Report</span>
+      </button>
+
+      <!-- Live Clock -->
+      <div id="live-clock" class="text-xs font-mono bg-emerald-900/60 px-2.5 py-1.5 rounded border border-emerald-700">--:--:--</div>
     </div>
   </header>
 
@@ -89,7 +105,7 @@
     </section>
 
     <!-- RIGHT: Cart & Fast Fiscal Checkout -->
-    <section class="w-96 lg:w-[420px] bg-white flex flex-col shadow-xl">
+    <section class="w-96 lg:w-[430px] bg-white flex flex-col shadow-xl">
       
       <!-- Cart Header & Customer Quick PIN -->
       <div class="p-4 border-b border-slate-100 bg-slate-50 space-y-2">
@@ -106,12 +122,16 @@
         <details class="text-xs bg-white rounded-lg border border-slate-200 p-2.5">
           <summary class="font-semibold text-slate-700 cursor-pointer flex justify-between items-center">
             <span><i class="fa-solid fa-address-card mr-1 text-slate-400"></i> Customer & Rx Claims</span>
-            <span class="text-[10px] text-emerald-600">Optional</span>
+            <span class="text-[10px] text-emerald-600 font-bold">Optional</span>
           </summary>
           <div class="space-y-2 mt-2 pt-2 border-t border-slate-100">
             <div>
-              <label class="block text-[10px] text-slate-500 uppercase font-bold">Buyer KRA PIN (B2B)</label>
-              <input id="input-buyer-pin" type="text" placeholder="e.g. P051234567Z" class="w-full p-1.5 border border-slate-200 rounded text-xs uppercase" />
+              <label class="block text-[10px] text-slate-500 uppercase font-bold">Customer Mobile (for M-Pesa push)</label>
+              <input id="input-buyer-phone" type="text" placeholder="0712345678" class="w-full p-1.5 border border-slate-200 rounded text-xs font-mono" />
+            </div>
+            <div>
+              <label class="block text-[10px] text-slate-500 uppercase font-bold">Buyer KRA PIN (B2B Tax Invoice)</label>
+              <input id="input-buyer-pin" type="text" placeholder="e.g. P051234567Z" class="w-full p-1.5 border border-slate-200 rounded text-xs uppercase font-mono" />
             </div>
             <div>
               <label class="block text-[10px] text-slate-500 uppercase font-bold">Buyer / Patient Name</label>
@@ -177,9 +197,50 @@
     </section>
   </main>
 
+  <!-- M-Pesa STK Push Dialog Modal -->
+  <div id="mpesa-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6 text-center space-y-4">
+      <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-3xl mx-auto shadow-inner">
+        <i class="fa-solid fa-mobile-screen-button"></i>
+      </div>
+      <div>
+        <h3 class="font-bold text-lg text-slate-800">Lipa na M-Pesa STK Push</h3>
+        <p class="text-xs text-slate-500 mt-1">Prompt customer's phone for PIN authorization</p>
+      </div>
+
+      <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-left space-y-2">
+        <div class="flex justify-between text-xs">
+          <span class="text-slate-500">Amount:</span>
+          <span id="mpesa-modal-amount" class="font-black text-emerald-700 text-sm">KES 0.00</span>
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 uppercase font-bold mb-1">Customer Phone Number</label>
+          <input id="mpesa-modal-phone" type="tel" placeholder="0712345678" class="w-full p-2 border border-slate-300 rounded-lg text-sm font-mono font-bold" />
+        </div>
+      </div>
+
+      <!-- Live Waiting State (Initially Hidden) -->
+      <div id="mpesa-waiting-box" class="hidden p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
+        <div class="flex items-center justify-center space-x-2 text-emerald-800 font-bold text-xs">
+          <i class="fa-solid fa-spinner fa-spin text-emerald-600"></i>
+          <span>Awaiting customer PIN entry on phone...</span>
+        </div>
+        <p id="mpesa-waiting-desc" class="text-[11px] text-slate-600 italic">Push sent to handset. Prompt will timeout in 60s.</p>
+      </div>
+
+      <div class="flex space-x-2 pt-1">
+        <button id="cancel-mpesa-btn" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl text-xs">Cancel</button>
+        <button id="send-stk-btn" class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center space-x-1">
+          <i class="fa-solid fa-paper-plane text-xs"></i>
+          <span>Send Push</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Thermal Receipt & QR Code Modal -->
   <div id="receipt-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
       
       <!-- Modal Header -->
       <div class="px-5 py-3.5 bg-emerald-700 text-white flex items-center justify-between no-print">
@@ -203,12 +264,115 @@
 
       <!-- Modal Action Buttons -->
       <div class="p-4 bg-slate-50 border-t border-slate-200 flex space-x-3 no-print">
-        <button id="print-receipt-btn" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl shadow flex items-center justify-center space-x-2">
+        <button id="print-receipt-btn" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl shadow flex items-center justify-center space-x-2 text-xs">
           <i class="fa-solid fa-print"></i>
           <span>Print Receipt (ESC/POS)</span>
         </button>
-        <button id="new-sale-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl shadow">
+        <button id="new-sale-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl shadow text-xs">
           Next Customer
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- End of Day Z-Report Modal -->
+  <div id="zreport-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+      <div class="px-5 py-3.5 bg-indigo-700 text-white flex items-center justify-between no-print">
+        <h3 class="font-bold flex items-center space-x-2">
+          <i class="fa-solid fa-file-invoice-dollar text-indigo-300"></i>
+          <span>Daily Z-Report & Fiscal Reconciliation</span>
+        </h3>
+        <button id="close-zreport-btn" class="text-indigo-200 hover:text-white text-lg">&times;</button>
+      </div>
+
+      <div id="printable-z-report" class="p-6 overflow-y-auto custom-scrollbar flex-1 font-mono text-xs text-slate-800 bg-white">
+        <pre id="zreport-text" class="whitespace-pre-wrap leading-tight"></pre>
+      </div>
+
+      <div class="p-4 bg-slate-50 border-t border-slate-200 flex space-x-3 no-print">
+        <button id="print-zreport-btn" class="flex-1 bg-indigo-700 hover:bg-indigo-800 text-white font-bold py-2.5 rounded-xl shadow flex items-center justify-center space-x-2 text-xs">
+          <i class="fa-solid fa-print"></i>
+          <span>Print Z-Report Slip</span>
+        </button>
+        <button id="dismiss-zreport-btn" class="px-5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl text-xs">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stock & Expiry Alerts Modal -->
+  <div id="alerts-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+      <div class="px-5 py-3.5 bg-amber-600 text-white flex items-center justify-between">
+        <h3 class="font-bold flex items-center space-x-2">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span>Inventory & Batch Expiry Alerts</span>
+        </h3>
+        <button id="close-alerts-btn" class="text-amber-200 hover:text-white text-lg">&times;</button>
+      </div>
+      <div class="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-4 text-xs">
+        <div>
+          <h4 class="font-bold text-rose-700 uppercase mb-2 flex items-center space-x-1">
+            <i class="fa-solid fa-ban"></i>
+            <span>Expired Batches (Immediate Quarantine)</span>
+          </h4>
+          <div id="expired-batches-list" class="space-y-1.5 text-slate-600"></div>
+        </div>
+        <div>
+          <h4 class="font-bold text-amber-700 uppercase mb-2 flex items-center space-x-1">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>Batches Expiring Within 90 Days (FEFO Dispensing Priority)</span>
+          </h4>
+          <div id="expiring-soon-list" class="space-y-1.5 text-slate-600"></div>
+        </div>
+        <div>
+          <h4 class="font-bold text-blue-700 uppercase mb-2 flex items-center space-x-1">
+            <i class="fa-solid fa-boxes-stacked"></i>
+            <span>Low Stock Items (Below Reorder Level)</span>
+          </h4>
+          <div id="low-stock-list" class="space-y-1.5 text-slate-600"></div>
+        </div>
+      </div>
+      <div class="p-3 bg-slate-50 border-t border-slate-200 text-right">
+        <button id="dismiss-alerts-btn" class="px-4 py-2 bg-slate-800 text-white rounded-lg font-bold text-xs">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Credit Note / Return Modal -->
+  <div id="refund-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl p-5 space-y-3">
+      <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+        <h3 class="font-bold text-slate-800 flex items-center space-x-2">
+          <i class="fa-solid fa-rotate-left text-rose-600"></i>
+          <span>Process Return / Credit Note</span>
+        </h3>
+        <button id="close-refund-btn" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+      </div>
+
+      <div class="space-y-2 text-xs">
+        <div>
+          <label class="block text-slate-600 font-bold mb-1">Order ID</label>
+          <input id="refund-order-id" type="number" placeholder="Enter Order ID (e.g. 1)" class="w-full p-2 border border-slate-300 rounded-lg text-sm" />
+        </div>
+        <div>
+          <label class="block text-slate-600 font-bold mb-1">Return Reason</label>
+          <input id="refund-reason" type="text" placeholder="Damaged package / Customer returned unsealed" class="w-full p-2 border border-slate-300 rounded-lg" />
+        </div>
+        <div class="flex items-center space-x-2 pt-1">
+          <input type="checkbox" id="refund-restock" checked class="w-4 h-4 text-emerald-600 rounded" />
+          <label for="refund-restock" class="text-slate-700">Restock undamaged items back to FEFO batch</label>
+        </div>
+      </div>
+
+      <div id="refund-result-box" class="hidden p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs space-y-1"></div>
+
+      <div class="flex space-x-2 pt-2 border-t border-slate-100">
+        <button id="cancel-refund-btn" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 rounded-lg text-xs">Cancel</button>
+        <button id="submit-refund-btn" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-lg text-xs">
+          Issue Credit Note
         </button>
       </div>
     </div>
@@ -220,6 +384,8 @@
     let allProducts = [];
     let cart = [];
     let currentCategory = "";
+    let activeCheckoutRequestId = null;
+    let mpesaPollingInterval = null;
 
     // Elements
     const searchInput = document.getElementById("search-input");
@@ -233,9 +399,23 @@
     const totalEl = document.getElementById("summary-total");
     const payCashBtn = document.getElementById("pay-cash-btn");
     const payMpesaBtn = document.getElementById("pay-mpesa-btn");
+    
+    // Modals
     const receiptModal = document.getElementById("receipt-modal");
     const receiptTextEl = document.getElementById("receipt-text");
     const modalQrImg = document.getElementById("modal-qr-image");
+    
+    const mpesaModal = document.getElementById("mpesa-modal");
+    const mpesaModalAmount = document.getElementById("mpesa-modal-amount");
+    const mpesaModalPhone = document.getElementById("mpesa-modal-phone");
+    const mpesaWaitingBox = document.getElementById("mpesa-waiting-box");
+    const sendStkBtn = document.getElementById("send-stk-btn");
+
+    const zreportModal = document.getElementById("zreport-modal");
+    const zreportText = document.getElementById("zreport-text");
+
+    const alertsModal = document.getElementById("alerts-modal");
+    const refundModal = document.getElementById("refund-modal");
 
     // Live Clock
     setInterval(() => {
@@ -251,6 +431,21 @@
         renderProducts();
       } catch (e) {
         console.error("Failed to load products", e);
+      }
+    }
+
+    // Load Inventory Alerts count
+    async function checkAlerts() {
+      try {
+        const res = await fetch('/api/v1/reports/inventory-alerts');
+        if (res.ok) {
+          const data = await res.json();
+          const total = (data.expiredCount || 0) + (data.expiringSoonCount || 0) + (data.lowStockCount || 0);
+          document.getElementById("nav-alert-badge").textContent = total;
+          window.cachedAlerts = data;
+        }
+      } catch (e) {
+        console.error("Failed to fetch alerts", e);
       }
     }
 
@@ -389,23 +584,32 @@
       renderCart();
     };
 
+    // Calculate current cart total amount
+    function getCartTotal() {
+      return cart.reduce((acc, i) => acc + (i.unitPrice * i.quantity), 0);
+    }
+
     // Fast Checkout Execution
-    async function processCheckout(method) {
+    async function processCheckout(method, paymentRef = null) {
       if (cart.length === 0) return;
 
       const buyerPin = document.getElementById("input-buyer-pin").value.trim();
       const buyerName = document.getElementById("input-buyer-name").value.trim() || "Walk-in Retail";
+      const buyerPhone = document.getElementById("input-buyer-phone").value.trim() || null;
       const rxRef = document.getElementById("input-rx-ref").value.trim();
       const doctorName = document.getElementById("input-doctor-name").value.trim();
+
+      const ref = paymentRef || (method === 'MPESA' ? 'MPESA-' + Math.random().toString(36).substring(2, 9).toUpperCase() : 'CASH');
 
       const payload = {
         cashierId: 1,
         buyerPin: buyerPin || null,
         buyerName: buyerName,
+        buyerPhone: buyerPhone,
         prescriptionReference: rxRef || null,
         doctorName: doctorName || null,
         paymentMethod: method,
-        paymentReference: method === 'MPESA' ? 'MPESA-' + Math.random().toString(36).substring(2, 9).toUpperCase() : 'CASH',
+        paymentReference: ref,
         items: cart.map(i => ({
           productId: i.product.productId,
           unitId: i.unitId,
@@ -431,14 +635,179 @@
         // Clear cart for next customer
         cart = [];
         renderCart();
+        checkAlerts();
       } catch (err) {
         alert("Transaction error: " + err.message);
       }
     }
 
-    // Event Listeners
+    // M-Pesa STK Push Flow
+    payMpesaBtn.addEventListener("click", () => {
+      if (cart.length === 0) return;
+      const total = getCartTotal();
+      mpesaModalAmount.textContent = `KES ${total.toFixed(2)}`;
+      
+      const phoneInput = document.getElementById("input-buyer-phone").value.trim();
+      mpesaModalPhone.value = phoneInput || "0712345678";
+      mpesaWaitingBox.classList.add("hidden");
+      sendStkBtn.disabled = false;
+      mpesaModal.classList.remove("hidden");
+    });
+
+    sendStkBtn.addEventListener("click", async () => {
+      const phone = mpesaModalPhone.value.trim();
+      if (!phone) {
+        alert("Please enter customer's mobile number.");
+        return;
+      }
+
+      sendStkBtn.disabled = true;
+      mpesaWaitingBox.classList.remove("hidden");
+
+      try {
+        const total = getCartTotal();
+        const stkRes = await fetch('/api/v1/payments/mpesa/stk-push', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phoneNumber: phone,
+            amount: total,
+            orderReference: 'ORD-' + Date.now(),
+            description: 'Pharmacy OTC Checkout'
+          })
+        });
+
+        const data = await stkRes.json();
+        activeCheckoutRequestId = data.checkoutRequestId;
+
+        // Start polling for payment confirmation
+        if (mpesaPollingInterval) clearInterval(mpesaPollingInterval);
+        mpesaPollingInterval = setInterval(async () => {
+          try {
+            const pollRes = await fetch(`/api/v1/payments/mpesa/status/${activeCheckoutRequestId}`);
+            const pollData = await pollRes.json();
+
+            if (pollData.status === 'SUCCESS') {
+              clearInterval(mpesaPollingInterval);
+              mpesaModal.classList.add("hidden");
+              // Complete checkout with the real M-Pesa receipt!
+              processCheckout('MPESA', pollData.mpesaReceiptNumber);
+            } else if (pollData.status === 'FAILED' || pollData.status === 'CANCELLED') {
+              clearInterval(mpesaPollingInterval);
+              alert("M-Pesa payment was not completed: " + pollData.responseDescription);
+              mpesaWaitingBox.classList.add("hidden");
+              sendStkBtn.disabled = false;
+            }
+          } catch (pollErr) {
+            console.error("Polling error", pollErr);
+          }
+        }, 1000);
+
+      } catch (err) {
+        alert("Failed to initiate STK push: " + err.message);
+        sendStkBtn.disabled = false;
+        mpesaWaitingBox.classList.add("hidden");
+      }
+    });
+
+    document.getElementById("cancel-mpesa-btn").addEventListener("click", () => {
+      if (mpesaPollingInterval) clearInterval(mpesaPollingInterval);
+      mpesaModal.classList.add("hidden");
+    });
+
+    // Z-Report Actions
+    document.getElementById("nav-zreport-btn").addEventListener("click", async () => {
+      try {
+        const res = await fetch('/api/v1/reports/z-report');
+        const data = await res.json();
+        zreportText.textContent = data.thermalReportText;
+        zreportModal.classList.remove("hidden");
+      } catch (err) {
+        alert("Failed to load Z-Report: " + err.message);
+      }
+    });
+
+    document.getElementById("close-zreport-btn").addEventListener("click", () => zreportModal.classList.add("hidden"));
+    document.getElementById("dismiss-zreport-btn").addEventListener("click", () => zreportModal.classList.add("hidden"));
+    document.getElementById("print-zreport-btn").addEventListener("click", () => window.print());
+
+    // Alerts Modal Actions
+    document.getElementById("nav-alerts-btn").addEventListener("click", () => {
+      const data = window.cachedAlerts || {};
+      const expList = document.getElementById("expired-batches-list");
+      const soonList = document.getElementById("expiring-soon-list");
+      const lowList = document.getElementById("low-stock-list");
+
+      expList.innerHTML = (data.expiredBatches && data.expiredBatches.length > 0) ?
+        data.expiredBatches.map(b => `<div class="p-2 bg-rose-50 border border-rose-200 rounded"><strong>${b.batchNumber}</strong> — Expired: ${b.expiryDate} (Qty: ${b.quantityAvailable})</div>`).join("") :
+        '<div class="text-slate-400 italic">No expired batches in inventory.</div>';
+
+      soonList.innerHTML = (data.expiringSoonBatches && data.expiringSoonBatches.length > 0) ?
+        data.expiringSoonBatches.map(b => `<div class="p-2 bg-amber-50 border border-amber-200 rounded"><strong>${b.batchNumber}</strong> — Expiry: ${b.expiryDate} (Qty: ${b.quantityAvailable})</div>`).join("") :
+        '<div class="text-slate-400 italic">No batches expiring in next 90 days.</div>';
+
+      lowList.innerHTML = (data.lowStockProducts && data.lowStockProducts.length > 0) ?
+        data.lowStockProducts.map(p => `<div class="p-2 bg-blue-50 border border-blue-200 rounded"><strong>${p.brandName}</strong> (${p.sku}) — Stock: ${p.currentStock} (Reorder at: ${p.reorderLevel})</div>`).join("") :
+        '<div class="text-slate-400 italic">All products above reorder threshold.</div>';
+
+      alertsModal.classList.remove("hidden");
+    });
+
+    document.getElementById("close-alerts-btn").addEventListener("click", () => alertsModal.classList.add("hidden"));
+    document.getElementById("dismiss-alerts-btn").addEventListener("click", () => alertsModal.classList.add("hidden"));
+
+    // Returns / Credit Note Actions
+    document.getElementById("nav-refund-btn").addEventListener("click", () => {
+      document.getElementById("refund-order-id").value = "";
+      document.getElementById("refund-reason").value = "";
+      document.getElementById("refund-result-box").classList.add("hidden");
+      refundModal.classList.remove("hidden");
+    });
+
+    document.getElementById("close-refund-btn").addEventListener("click", () => refundModal.classList.add("hidden"));
+    document.getElementById("cancel-refund-btn").addEventListener("click", () => refundModal.classList.add("hidden"));
+
+    document.getElementById("submit-refund-btn").addEventListener("click", async () => {
+      const orderId = document.getElementById("refund-order-id").value.trim();
+      const reason = document.getElementById("refund-reason").value.trim();
+      const restock = document.getElementById("refund-restock").checked;
+
+      if (!orderId) {
+        alert("Please enter an Order ID");
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/v1/credit-notes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: parseInt(orderId),
+            reason: reason || "Customer Return",
+            restockInventory: restock
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Return processing failed");
+
+        const box = document.getElementById("refund-result-box");
+        box.innerHTML = `
+          <div class="font-bold text-emerald-800">Credit Note Issued: ${data.creditNoteNumber}</div>
+          <div>KRA Credit Note No: <span class="font-mono font-bold">${data.kraCreditNoteNumber}</span></div>
+          <div>Refund Total: <strong>KES ${data.refundAmount.toFixed(2)}</strong> (Tax Refund: KES ${data.taxRefundAmount.toFixed(2)})</div>
+          <div class="text-emerald-600 font-semibold mt-1"><i class="fa-solid fa-check"></i> Inventory restocked & KRA tax liability credited.</div>
+        `;
+        box.classList.remove("hidden");
+        loadProducts();
+        checkAlerts();
+      } catch (err) {
+        alert("Error: " + err.message);
+      }
+    });
+
+    // Cash Checkout
     payCashBtn.addEventListener("click", () => processCheckout("CASH"));
-    payMpesaBtn.addEventListener("click", () => processCheckout("MPESA"));
     document.getElementById("clear-cart-btn").addEventListener("click", () => { cart = []; renderCart(); });
     document.getElementById("close-modal-btn").addEventListener("click", () => receiptModal.classList.add("hidden"));
     document.getElementById("new-sale-btn").addEventListener("click", () => receiptModal.classList.add("hidden"));
@@ -458,16 +827,24 @@
       });
     });
 
-    // Keyboard Shortcuts (F2: Search focus, F9: Cash, F10: M-Pesa, Esc: Close)
+    // Keyboard Shortcuts (F2: Search, F9: Cash, F10: M-Pesa, Esc: Close)
     window.addEventListener("keydown", (e) => {
       if (e.key === "F2") { e.preventDefault(); searchInput.focus(); searchInput.select(); }
       if (e.key === "F9") { e.preventDefault(); processCheckout("CASH"); }
-      if (e.key === "F10") { e.preventDefault(); processCheckout("MPESA"); }
-      if (e.key === "Escape") { receiptModal.classList.add("hidden"); }
+      if (e.key === "F10") { e.preventDefault(); payMpesaBtn.click(); }
+      if (e.key === "Escape") {
+        receiptModal.classList.add("hidden");
+        mpesaModal.classList.add("hidden");
+        zreportModal.classList.add("hidden");
+        alertsModal.classList.add("hidden");
+        refundModal.classList.add("hidden");
+      }
     });
 
     // Initial Load
     loadProducts();
+    checkAlerts();
   </script>
 </body>
 </html>
+

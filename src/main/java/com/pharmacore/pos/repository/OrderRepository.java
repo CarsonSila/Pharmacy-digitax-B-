@@ -8,5 +8,6 @@ import java.util.Optional;
 @Repository
 public interface OrderRepository extends JpaRepository<Order, Long> {
     Optional<Order> findByOrderNumber(String orderNumber);
+    java.util.List<Order> findByCreatedAtBetween(java.time.LocalDateTime start, java.time.LocalDateTime end);
 }
 

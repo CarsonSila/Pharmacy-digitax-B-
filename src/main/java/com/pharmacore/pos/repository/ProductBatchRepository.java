@@ -27,5 +27,9 @@ public interface ProductBatchRepository extends JpaRepository<ProductBatch, Long
     );
 
     List<ProductBatch> findByProductProductId(Integer productId);
+
+    List<ProductBatch> findByExpiryDateBefore(LocalDate date);
+
+    List<ProductBatch> findByExpiryDateBetween(LocalDate start, LocalDate end);
 }
 
