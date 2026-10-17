@@ -41,3 +41,4 @@ Thumbs.db
 ### Reference Archives ###
 reference/
 *.log
+cloudflared.exe
