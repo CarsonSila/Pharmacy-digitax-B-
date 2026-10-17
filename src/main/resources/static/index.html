@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PharmaCore POS — Tax Compliant (DigiTax / eTIMS)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -16,107 +16,134 @@
       }
       .no-print { display: none !important; }
     }
-    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    /* Touch device optimizations */
+    input, button, select { -webkit-tap-highlight-color: transparent; }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 h-screen flex flex-col font-sans select-none overflow-hidden">
+<body class="bg-slate-100 text-slate-800 min-h-screen md:h-screen flex flex-col font-sans select-none overflow-x-hidden md:overflow-hidden">
 
   <!-- Top Navigation Header -->
-  <header class="bg-emerald-700 text-white px-6 py-2.5 flex items-center justify-between shadow-md">
-    <div class="flex items-center space-x-3">
-      <div class="w-10 h-10 rounded-lg bg-white text-emerald-700 flex items-center justify-center font-black text-xl shadow">
-        <i class="fa-solid fa-mortar-pestle"></i>
+  <header class="bg-emerald-700 text-white px-3 sm:px-6 py-2.5 shadow-md flex-shrink-0">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      
+      <!-- Brand & Branch Identity -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-2 sm:space-x-3">
+          <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white text-emerald-700 flex items-center justify-center font-black text-lg sm:text-xl shadow flex-shrink-0">
+            <i class="fa-solid fa-mortar-pestle"></i>
+          </div>
+          <div>
+            <h1 class="text-sm sm:text-lg font-bold tracking-tight flex items-center">
+              PharmaCore POS 
+              <span class="text-[9px] sm:text-xs bg-emerald-900 text-emerald-200 px-1.5 py-0.5 rounded-full uppercase ml-1.5 font-bold">Tax Edition</span>
+            </h1>
+            <p class="text-[10px] sm:text-xs text-emerald-200 truncate">Moi Ave Branch, Nairobi | Till: POS-01</p>
+          </div>
+        </div>
+
+        <!-- Live Clock (Mobile top right) -->
+        <div id="live-clock" class="sm:hidden text-[10px] font-mono bg-emerald-900/60 px-2 py-1 rounded border border-emerald-700">--:--:--</div>
       </div>
-      <div>
-        <h1 class="text-lg font-bold tracking-tight">PharmaCore POS <span class="text-xs bg-emerald-900 text-emerald-200 px-2 py-0.5 rounded-full uppercase ml-1">v1.2 Tax Edition</span></h1>
-        <p class="text-xs text-emerald-200">Moi Avenue Branch, Nairobi | Till: POS-01</p>
+
+      <!-- Quick Action Buttons (Horizontally scrollable on mobile) -->
+      <div class="flex items-center space-x-1.5 sm:space-x-2 text-xs overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
+        <!-- Live DigiTax Indicator -->
+        <div class="flex items-center space-x-1.5 bg-emerald-800/90 px-2 sm:px-2.5 py-1 rounded-lg border border-emerald-600 whitespace-nowrap flex-shrink-0 text-[10px] sm:text-xs">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span class="font-bold text-emerald-200">eTIMS Online</span>
+        </div>
+
+        <!-- Add Medication Button -->
+        <button id="nav-add-product-btn" class="flex items-center space-x-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-2.5 py-1 rounded-lg whitespace-nowrap flex-shrink-0 shadow-sm text-[11px] sm:text-xs">
+          <i class="fa-solid fa-plus text-[10px]"></i>
+          <span>+ Medicine</span>
+        </button>
+
+        <!-- Inventory Expiry Alert Pill -->
+        <button id="nav-alerts-btn" class="flex items-center space-x-1 bg-amber-500 hover:bg-amber-600 text-amber-950 font-bold px-2 py-1 rounded-lg whitespace-nowrap flex-shrink-0 shadow-sm text-[11px] sm:text-xs">
+          <i class="fa-solid fa-triangle-exclamation text-[10px]"></i>
+          <span>Alerts</span>
+          <span id="nav-alert-badge" class="bg-amber-950 text-white text-[9px] px-1 rounded-full">0</span>
+        </button>
+
+        <!-- Credit Note / Return Button -->
+        <button id="nav-refund-btn" class="flex items-center space-x-1 bg-slate-800 hover:bg-slate-900 text-white font-medium px-2 py-1 rounded-lg whitespace-nowrap flex-shrink-0 shadow-sm text-[11px] sm:text-xs">
+          <i class="fa-solid fa-rotate-left text-[10px]"></i>
+          <span>Returns</span>
+        </button>
+
+        <!-- End of Day Z-Report Button -->
+        <button id="nav-zreport-btn" class="flex items-center space-x-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-2 py-1 rounded-lg whitespace-nowrap flex-shrink-0 shadow-sm text-[11px] sm:text-xs">
+          <i class="fa-solid fa-file-invoice-dollar text-[10px]"></i>
+          <span>Z-Report</span>
+        </button>
+
+        <!-- Live Clock (Desktop) -->
+        <div id="live-clock-desktop" class="hidden sm:block text-xs font-mono bg-emerald-900/60 px-2 py-1 rounded border border-emerald-700 flex-shrink-0">--:--:--</div>
       </div>
-    </div>
-
-    <!-- Quick Operations & Actions -->
-    <div class="flex items-center space-x-3 text-sm">
-      <!-- Live DigiTax Indicator -->
-      <div class="flex items-center space-x-2 bg-emerald-800/80 px-3 py-1.5 rounded-lg border border-emerald-600">
-        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="font-medium text-xs">DigiTax eTIMS: <strong class="text-emerald-200">ONLINE (AUTO-FISCAL)</strong></span>
-      </div>
-
-      <!-- Inventory Expiry Alert Pill -->
-      <button id="nav-alerts-btn" class="flex items-center space-x-1.5 bg-amber-500 hover:bg-amber-600 text-amber-950 font-bold px-3 py-1.5 rounded-lg text-xs transition shadow-sm">
-        <i class="fa-solid fa-triangle-exclamation"></i>
-        <span>Stock Alerts</span>
-        <span id="nav-alert-badge" class="bg-amber-950 text-white text-[10px] px-1.5 py-0.2 rounded-full">0</span>
-      </button>
-
-      <!-- Credit Note / Return Button -->
-      <button id="nav-refund-btn" class="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-900 text-white font-medium px-3 py-1.5 rounded-lg text-xs transition shadow-sm">
-        <i class="fa-solid fa-rotate-left"></i>
-        <span>Returns / CN</span>
-      </button>
-
-      <!-- Add Medication Button -->
-      <button id="nav-add-product-btn" class="flex items-center space-x-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition shadow-sm">
-        <i class="fa-solid fa-pills"></i>
-        <span>+ Add Medication</span>
-      </button>
-
-      <!-- End of Day Z-Report Button -->
-      <button id="nav-zreport-btn" class="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition shadow-sm">
-        <i class="fa-solid fa-file-invoice-dollar"></i>
-        <span>Daily Z-Report</span>
-      </button>
-
-      <!-- Live Clock -->
-      <div id="live-clock" class="text-xs font-mono bg-emerald-900/60 px-2.5 py-1.5 rounded border border-emerald-700">--:--:--</div>
     </div>
   </header>
 
-  <!-- Main POS Workspace -->
-  <main class="flex-1 flex overflow-hidden">
+  <!-- Mobile View Switcher Tabs (Visible on mobile only, hidden on tablet/desktop) -->
+  <div class="md:hidden flex bg-white border-b border-slate-200 text-xs font-bold sticky top-0 z-20 shadow-sm">
+    <button id="tab-catalog" class="flex-1 py-2.5 text-center border-b-2 border-emerald-600 text-emerald-700 flex items-center justify-center space-x-1.5 transition">
+      <i class="fa-solid fa-mortar-pestle"></i>
+      <span>Medicines Catalog</span>
+    </button>
+    <button id="tab-cart" class="flex-1 py-2.5 text-center border-b-2 border-transparent text-slate-500 flex items-center justify-center space-x-1.5 transition">
+      <i class="fa-solid fa-basket-shopping"></i>
+      <span>Checkout Cart</span>
+      <span id="mobile-tab-cart-badge" class="bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.2 rounded-full font-bold">0</span>
+    </button>
+  </div>
 
-    <!-- LEFT: Product Search & Shelf Catalog -->
-    <section class="flex-1 flex flex-col p-4 space-y-3 overflow-hidden border-r border-slate-200">
+  <!-- Main POS Workspace (Responsive Flex Container) -->
+  <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+
+    <!-- LEFT / TAB 1: Product Search & Shelf Catalog -->
+    <section id="section-catalog" class="flex-1 flex flex-col p-3 sm:p-4 space-y-2.5 sm:space-y-3 overflow-y-auto md:overflow-hidden border-r border-slate-200">
       
       <!-- Search & Barcode Input Bar -->
       <div class="flex items-center space-x-2">
         <div class="relative flex-1">
-          <i class="fa-solid fa-barcode absolute left-3.5 top-3.5 text-slate-400 text-lg"></i>
+          <i class="fa-solid fa-barcode absolute left-3 top-3 text-slate-400 text-base sm:text-lg"></i>
           <input 
             type="text" 
             id="search-input" 
-            placeholder="Scan barcode or type medication / brand / SKU... (Press F2 to focus)" 
-            class="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 shadow-sm"
+            placeholder="Scan barcode or search medication / SKU... (F2)" 
+            class="w-full pl-9 sm:pl-11 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 shadow-sm"
             autocomplete="off"
           />
         </div>
-        <button id="clear-search-btn" class="px-3 py-2.5 bg-slate-200 hover:bg-slate-300 rounded-xl text-xs font-medium text-slate-700">
+        <button id="clear-search-btn" class="px-2.5 sm:px-3 py-2 sm:py-2.5 bg-slate-200 hover:bg-slate-300 rounded-xl text-xs font-medium text-slate-700">
           Clear
         </button>
       </div>
 
       <!-- Category Filter Tabs -->
-      <div id="category-bar" class="flex space-x-2 overflow-x-auto pb-1 text-xs">
-        <button class="cat-pill active px-3.5 py-1.5 rounded-lg font-semibold bg-emerald-700 text-white shadow-sm" data-cat="">All Items</button>
-        <button class="cat-pill px-3.5 py-1.5 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border border-slate-200" data-cat="POM">Prescriptions (POM)</button>
-        <button class="cat-pill px-3.5 py-1.5 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border border-slate-200" data-cat="OTC">Over The Counter</button>
-        <button class="cat-pill px-3.5 py-1.5 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border border-slate-200" data-cat="BEAUTY">Cosmetics & Care</button>
-        <button class="cat-pill px-3.5 py-1.5 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border border-slate-200" data-cat="DEVICES">Medical Supplies</button>
+      <div id="category-bar" class="flex space-x-1.5 sm:space-x-2 overflow-x-auto pb-1 text-[11px] sm:text-xs flex-shrink-0 custom-scrollbar">
+        <button class="cat-pill active px-3 py-1.5 rounded-lg font-semibold bg-emerald-700 text-white shadow-sm whitespace-nowrap" data-cat="">All Items</button>
+        <button class="cat-pill px-3 py-1.5 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 whitespace-nowrap" data-cat="POM">Prescriptions (POM)</button>
+        <button class="cat-pill px-3 py-1.5 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 whitespace-nowrap" data-cat="OTC">Over The Counter</button>
+        <button class="cat-pill px-3 py-1.5 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 whitespace-nowrap" data-cat="BEAUTY">Cosmetics & Care</button>
+        <button class="cat-pill px-3 py-1.5 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 whitespace-nowrap" data-cat="DEVICES">Medical Supplies</button>
       </div>
 
-      <!-- Products Grid -->
-      <div id="products-grid" class="flex-1 overflow-y-auto custom-scrollbar grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pr-1">
+      <!-- Products Grid (1 col on mobile, 2 on tablet, 3 on desktop) -->
+      <div id="products-grid" class="flex-1 overflow-y-auto custom-scrollbar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 pb-20 md:pb-0">
         <!-- Rendered dynamically via JavaScript -->
       </div>
     </section>
 
-    <!-- RIGHT: Cart & Fast Fiscal Checkout -->
-    <section class="w-96 lg:w-[430px] bg-white flex flex-col shadow-xl">
+    <!-- RIGHT / TAB 2: Cart & Fast Fiscal Checkout -->
+    <section id="section-cart" class="hidden md:flex w-full md:w-96 lg:w-[430px] bg-white flex-col shadow-xl flex-shrink-0 border-l border-slate-200">
       
       <!-- Cart Header & Customer Quick PIN -->
-      <div class="p-4 border-b border-slate-100 bg-slate-50 space-y-2">
+      <div class="p-3 sm:p-4 border-b border-slate-100 bg-slate-50 space-y-2">
         <div class="flex items-center justify-between">
-          <h2 class="font-bold text-slate-800 flex items-center space-x-2">
+          <h2 class="font-bold text-slate-800 flex items-center space-x-2 text-xs sm:text-sm">
             <i class="fa-solid fa-basket-shopping text-emerald-600"></i>
             <span>Current Checkout</span>
             <span id="cart-count-badge" class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
@@ -125,7 +152,7 @@
         </div>
 
         <!-- Customer & Rx Accordion Toggle -->
-        <details class="text-xs bg-white rounded-lg border border-slate-200 p-2.5">
+        <details class="text-xs bg-white rounded-lg border border-slate-200 p-2 sm:p-2.5">
           <summary class="font-semibold text-slate-700 cursor-pointer flex justify-between items-center">
             <span><i class="fa-solid fa-address-card mr-1 text-slate-400"></i> Customer & Rx Claims</span>
             <span class="text-[10px] text-emerald-600 font-bold">Optional</span>
@@ -158,60 +185,77 @@
       </div>
 
       <!-- Cart Line Items -->
-      <div id="cart-items-container" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
-        <div id="empty-cart-msg" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 py-12">
-          <i class="fa-solid fa-cart-arrow-down text-4xl text-slate-300"></i>
-          <p class="text-xs">Scan an item or click a product to begin checkout</p>
+      <div id="cart-items-container" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2 min-h-[160px]">
+        <div id="empty-cart-msg" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 py-10">
+          <i class="fa-solid fa-cart-arrow-down text-3xl sm:text-4xl text-slate-300"></i>
+          <p class="text-xs">Scan or tap a medicine to add to cart</p>
         </div>
       </div>
 
       <!-- Financial & eTIMS Tax Breakdown Summary -->
-      <div class="p-4 bg-slate-50 border-t border-slate-200 space-y-2 text-xs">
+      <div class="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 space-y-1.5 sm:space-y-2 text-xs flex-shrink-0">
         <div class="flex justify-between text-slate-600">
           <span>Subtotal:</span>
           <span id="summary-subtotal" class="font-semibold text-slate-800">KES 0.00</span>
         </div>
 
         <div class="flex justify-between text-slate-500">
-          <span><span class="bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded font-bold mr-1">[E]</span> Exempt Medicines:</span>
+          <span><span class="bg-blue-100 text-blue-800 px-1 py-0.2 rounded font-bold mr-1 text-[10px]">[E]</span> Exempt Medicines:</span>
           <span id="summary-exempt">KES 0.00</span>
         </div>
 
         <div class="flex justify-between text-slate-500">
-          <span><span class="bg-purple-100 text-purple-800 px-1.5 py-0.2 rounded font-bold mr-1">[A]</span> 16% VAT Amount:</span>
+          <span><span class="bg-purple-100 text-purple-800 px-1 py-0.2 rounded font-bold mr-1 text-[10px]">[A]</span> 16% VAT Amount:</span>
           <span id="summary-vat">KES 0.00</span>
         </div>
 
-        <div class="pt-2 border-t border-slate-200 flex justify-between items-baseline">
-          <span class="text-sm font-bold text-slate-800">Total Payable:</span>
-          <span id="summary-total" class="text-2xl font-black text-emerald-700">KES 0.00</span>
+        <div class="pt-1.5 border-t border-slate-200 flex justify-between items-baseline">
+          <span class="text-xs sm:text-sm font-bold text-slate-800">Total Payable:</span>
+          <span id="summary-total" class="text-xl sm:text-2xl font-black text-emerald-700">KES 0.00</span>
         </div>
 
         <!-- Checkout Tender Action Buttons -->
-        <div class="pt-2 grid grid-cols-2 gap-2">
-          <button id="pay-cash-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow flex items-center justify-center space-x-2 transition active:scale-95 disabled:opacity-50">
+        <div class="pt-1.5 grid grid-cols-2 gap-2">
+          <button id="pay-cash-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 sm:py-3 rounded-xl shadow flex items-center justify-center space-x-1.5 transition active:scale-95 disabled:opacity-50 text-xs sm:text-sm">
             <i class="fa-solid fa-money-bill-wave"></i>
             <span>Cash (F9)</span>
           </button>
           
-          <button id="pay-mpesa-btn" class="bg-emerald-800 hover:bg-emerald-900 text-white font-bold py-3 rounded-xl shadow flex items-center justify-center space-x-2 transition active:scale-95 disabled:opacity-50">
+          <button id="pay-mpesa-btn" class="bg-emerald-800 hover:bg-emerald-900 text-white font-bold py-2.5 sm:py-3 rounded-xl shadow flex items-center justify-center space-x-1.5 transition active:scale-95 disabled:opacity-50 text-xs sm:text-sm">
             <i class="fa-solid fa-mobile-screen-button"></i>
             <span>M-Pesa (F10)</span>
           </button>
         </div>
       </div>
     </section>
+
+    <!-- Mobile Floating Bottom Checkout Bar (Appears when items are in cart) -->
+    <div id="mobile-floating-cart-bar" class="md:hidden fixed bottom-0 left-0 right-0 bg-emerald-800 text-white p-3 flex items-center justify-between shadow-2xl z-30 transform translate-y-full transition-transform duration-200">
+      <div class="flex items-center space-x-2">
+        <div class="w-8 h-8 rounded-full bg-emerald-700 flex items-center justify-center text-sm font-bold">
+          <span id="floating-cart-count">0</span>
+        </div>
+        <div>
+          <div class="text-[10px] text-emerald-200 uppercase font-semibold">Total Payable</div>
+          <div id="floating-cart-total" class="text-sm font-black text-white">KES 0.00</div>
+        </div>
+      </div>
+      <button id="floating-view-cart-btn" class="bg-emerald-500 hover:bg-emerald-400 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-1.5 shadow">
+        <span>Proceed to Pay</span>
+        <i class="fa-solid fa-chevron-right text-[10px]"></i>
+      </button>
+    </div>
   </main>
 
   <!-- M-Pesa STK Push Dialog Modal -->
-  <div id="mpesa-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6 text-center space-y-4">
-      <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-3xl mx-auto shadow-inner">
+  <div id="mpesa-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-5 sm:p-6 text-center space-y-3 sm:space-y-4">
+      <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl sm:text-3xl mx-auto shadow-inner">
         <i class="fa-solid fa-mobile-screen-button"></i>
       </div>
       <div>
-        <h3 class="font-bold text-lg text-slate-800">Lipa na M-Pesa STK Push</h3>
-        <p class="text-xs text-slate-500 mt-1">Prompt customer's phone for PIN authorization</p>
+        <h3 class="font-bold text-base sm:text-lg text-slate-800">Lipa na M-Pesa STK Push</h3>
+        <p class="text-[11px] sm:text-xs text-slate-500 mt-0.5">Prompt customer's phone for PIN authorization</p>
       </div>
 
       <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-left space-y-2">
@@ -245,34 +289,34 @@
   </div>
 
   <!-- Thermal Receipt & QR Code Modal -->
-  <div id="receipt-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+  <div id="receipt-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
       
       <!-- Modal Header -->
-      <div class="px-5 py-3.5 bg-emerald-700 text-white flex items-center justify-between no-print">
-        <h3 class="font-bold flex items-center space-x-2">
+      <div class="px-4 py-3 bg-emerald-700 text-white flex items-center justify-between no-print flex-shrink-0">
+        <h3 class="font-bold flex items-center space-x-2 text-xs sm:text-sm">
           <i class="fa-solid fa-circle-check text-emerald-300"></i>
           <span>Sale Fiscalized & Completed!</span>
         </h3>
-        <button id="close-modal-btn" class="text-emerald-200 hover:text-white text-lg">&times;</button>
+        <button id="close-modal-btn" class="text-emerald-200 hover:text-white text-lg p-1">&times;</button>
       </div>
 
       <!-- Printable 80mm Receipt Content -->
-      <div id="printable-receipt" class="p-6 overflow-y-auto custom-scrollbar flex-1 font-mono text-xs text-slate-800 bg-white">
-        <pre id="receipt-text" class="whitespace-pre-wrap leading-tight"></pre>
+      <div id="printable-receipt" class="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 font-mono text-xs text-slate-800 bg-white">
+        <pre id="receipt-text" class="whitespace-pre-wrap leading-tight text-[11px] sm:text-xs"></pre>
         
         <!-- Rendered Real KRA QR Code Image -->
         <div class="text-center pt-3 pb-2 flex flex-col items-center justify-center">
-          <img id="modal-qr-image" src="" alt="KRA eTIMS Verification QR" class="w-36 h-36 border border-slate-300 rounded p-1 shadow-sm" />
-          <p class="text-[10px] text-slate-500 mt-1 uppercase font-semibold">Scannable KRA eTIMS Verification</p>
+          <img id="modal-qr-image" src="" alt="KRA eTIMS Verification QR" class="w-32 h-32 sm:w-36 sm:h-36 border border-slate-300 rounded p-1 shadow-sm" />
+          <p class="text-[9px] sm:text-[10px] text-slate-500 mt-1 uppercase font-semibold">Scannable KRA eTIMS Verification</p>
         </div>
       </div>
 
       <!-- Modal Action Buttons -->
-      <div class="p-4 bg-slate-50 border-t border-slate-200 flex space-x-3 no-print">
-        <button id="print-receipt-btn" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl shadow flex items-center justify-center space-x-2 text-xs">
+      <div class="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 flex space-x-2 sm:space-x-3 no-print flex-shrink-0">
+        <button id="print-receipt-btn" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl shadow flex items-center justify-center space-x-1.5 text-xs">
           <i class="fa-solid fa-print"></i>
-          <span>Print Receipt (ESC/POS)</span>
+          <span>Print Receipt</span>
         </button>
         <button id="new-sale-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl shadow text-xs">
           Next Customer
@@ -282,26 +326,26 @@
   </div>
 
   <!-- End of Day Z-Report Modal -->
-  <div id="zreport-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
-      <div class="px-5 py-3.5 bg-indigo-700 text-white flex items-center justify-between no-print">
-        <h3 class="font-bold flex items-center space-x-2">
+  <div id="zreport-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+      <div class="px-4 py-3 bg-indigo-700 text-white flex items-center justify-between no-print flex-shrink-0">
+        <h3 class="font-bold flex items-center space-x-2 text-xs sm:text-sm">
           <i class="fa-solid fa-file-invoice-dollar text-indigo-300"></i>
           <span>Daily Z-Report & Fiscal Reconciliation</span>
         </h3>
-        <button id="close-zreport-btn" class="text-indigo-200 hover:text-white text-lg">&times;</button>
+        <button id="close-zreport-btn" class="text-indigo-200 hover:text-white text-lg p-1">&times;</button>
       </div>
 
-      <div id="printable-z-report" class="p-6 overflow-y-auto custom-scrollbar flex-1 font-mono text-xs text-slate-800 bg-white">
+      <div id="printable-z-report" class="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 font-mono text-[11px] sm:text-xs text-slate-800 bg-white">
         <pre id="zreport-text" class="whitespace-pre-wrap leading-tight"></pre>
       </div>
 
-      <div class="p-4 bg-slate-50 border-t border-slate-200 flex space-x-3 no-print">
+      <div class="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 flex space-x-2 sm:space-x-3 no-print flex-shrink-0">
         <button id="print-zreport-btn" class="flex-1 bg-indigo-700 hover:bg-indigo-800 text-white font-bold py-2.5 rounded-xl shadow flex items-center justify-center space-x-2 text-xs">
           <i class="fa-solid fa-print"></i>
           <span>Print Z-Report Slip</span>
         </button>
-        <button id="dismiss-zreport-btn" class="px-5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl text-xs">
+        <button id="dismiss-zreport-btn" class="px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl text-xs">
           Close
         </button>
       </div>
@@ -309,53 +353,53 @@
   </div>
 
   <!-- Stock & Expiry Alerts Modal -->
-  <div id="alerts-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
-      <div class="px-5 py-3.5 bg-amber-600 text-white flex items-center justify-between">
-        <h3 class="font-bold flex items-center space-x-2">
+  <div id="alerts-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+      <div class="px-4 py-3 bg-amber-600 text-white flex items-center justify-between flex-shrink-0">
+        <h3 class="font-bold flex items-center space-x-2 text-xs sm:text-sm">
           <i class="fa-solid fa-triangle-exclamation"></i>
           <span>Inventory & Batch Expiry Alerts</span>
         </h3>
-        <button id="close-alerts-btn" class="text-amber-200 hover:text-white text-lg">&times;</button>
+        <button id="close-alerts-btn" class="text-amber-200 hover:text-white text-lg p-1">&times;</button>
       </div>
       <div class="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-4 text-xs">
         <div>
-          <h4 class="font-bold text-rose-700 uppercase mb-2 flex items-center space-x-1">
+          <h4 class="font-bold text-rose-700 uppercase mb-1.5 flex items-center space-x-1">
             <i class="fa-solid fa-ban"></i>
             <span>Expired Batches (Immediate Quarantine)</span>
           </h4>
-          <div id="expired-batches-list" class="space-y-1.5 text-slate-600"></div>
+          <div id="expired-batches-list" class="space-y-1 text-slate-600"></div>
         </div>
         <div>
-          <h4 class="font-bold text-amber-700 uppercase mb-2 flex items-center space-x-1">
+          <h4 class="font-bold text-amber-700 uppercase mb-1.5 flex items-center space-x-1">
             <i class="fa-solid fa-clock-rotate-left"></i>
             <span>Batches Expiring Within 90 Days (FEFO Dispensing Priority)</span>
           </h4>
-          <div id="expiring-soon-list" class="space-y-1.5 text-slate-600"></div>
+          <div id="expiring-soon-list" class="space-y-1 text-slate-600"></div>
         </div>
         <div>
-          <h4 class="font-bold text-blue-700 uppercase mb-2 flex items-center space-x-1">
+          <h4 class="font-bold text-blue-700 uppercase mb-1.5 flex items-center space-x-1">
             <i class="fa-solid fa-boxes-stacked"></i>
             <span>Low Stock Items (Below Reorder Level)</span>
           </h4>
-          <div id="low-stock-list" class="space-y-1.5 text-slate-600"></div>
+          <div id="low-stock-list" class="space-y-1 text-slate-600"></div>
         </div>
       </div>
-      <div class="p-3 bg-slate-50 border-t border-slate-200 text-right">
+      <div class="p-3 bg-slate-50 border-t border-slate-200 text-right flex-shrink-0">
         <button id="dismiss-alerts-btn" class="px-4 py-2 bg-slate-800 text-white rounded-lg font-bold text-xs">Close</button>
       </div>
     </div>
   </div>
 
   <!-- Credit Note / Return Modal -->
-  <div id="refund-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl p-5 space-y-3">
+  <div id="refund-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl p-4 sm:p-5 space-y-3">
       <div class="flex justify-between items-center border-b border-slate-200 pb-2">
-        <h3 class="font-bold text-slate-800 flex items-center space-x-2">
+        <h3 class="font-bold text-slate-800 flex items-center space-x-2 text-xs sm:text-sm">
           <i class="fa-solid fa-rotate-left text-rose-600"></i>
           <span>Process Return / Credit Note</span>
         </h3>
-        <button id="close-refund-btn" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+        <button id="close-refund-btn" class="text-slate-400 hover:text-slate-600 text-lg p-1">&times;</button>
       </div>
 
       <div class="space-y-2 text-xs">
@@ -385,43 +429,43 @@
   </div>
 
   <!-- Add Product & Consignment Stock Modal -->
-  <div id="product-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
-      <div class="px-5 py-3.5 bg-emerald-700 text-white flex items-center justify-between">
-        <h3 class="font-bold flex items-center space-x-2">
+  <div id="product-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+      <div class="px-4 py-3 bg-emerald-700 text-white flex items-center justify-between flex-shrink-0">
+        <h3 class="font-bold flex items-center space-x-2 text-xs sm:text-sm">
           <i class="fa-solid fa-pills text-emerald-300"></i>
           <span>Add New Medicine & Initial Stock</span>
         </h3>
-        <button id="close-product-modal-btn" class="text-emerald-200 hover:text-white text-lg">&times;</button>
+        <button id="close-product-modal-btn" class="text-emerald-200 hover:text-white text-lg p-1">&times;</button>
       </div>
 
-      <div class="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-3 text-xs">
-        <div class="grid grid-cols-2 gap-3">
+      <div class="p-4 sm:p-5 overflow-y-auto custom-scrollbar flex-1 space-y-3 text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
           <div>
             <label class="block text-slate-600 font-bold mb-1">Brand Name *</label>
-            <input id="new-brand-name" type="text" placeholder="e.g. Augmentin 625mg" class="w-full p-2 border border-slate-300 rounded-lg" required />
+            <input id="new-brand-name" type="text" placeholder="e.g. Augmentin 625mg" class="w-full p-2 border border-slate-300 rounded-lg text-xs sm:text-sm" required />
           </div>
           <div>
             <label class="block text-slate-600 font-bold mb-1">Generic / Active Ingredient</label>
-            <input id="new-generic-name" type="text" placeholder="e.g. Amoxicillin / Clavulanic" class="w-full p-2 border border-slate-300 rounded-lg" />
+            <input id="new-generic-name" type="text" placeholder="e.g. Amoxicillin / Clavulanic" class="w-full p-2 border border-slate-300 rounded-lg text-xs sm:text-sm" />
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
           <div>
             <label class="block text-slate-600 font-bold mb-1">Barcode / EAN</label>
-            <input id="new-barcode" type="text" placeholder="890123456005" class="w-full p-2 border border-slate-300 rounded-lg font-mono" />
+            <input id="new-barcode" type="text" placeholder="890123456005" class="w-full p-2 border border-slate-300 rounded-lg font-mono text-xs sm:text-sm" />
           </div>
           <div>
             <label class="block text-slate-600 font-bold mb-1">SKU / Item Code</label>
-            <input id="new-sku" type="text" placeholder="MED-AUG-625" class="w-full p-2 border border-slate-300 rounded-lg font-mono" />
+            <input id="new-sku" type="text" placeholder="MED-AUG-625" class="w-full p-2 border border-slate-300 rounded-lg font-mono text-xs sm:text-sm" />
           </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-2">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
           <div>
             <label class="block text-slate-600 font-bold mb-1">Category</label>
-            <select id="new-category" class="w-full p-2 border border-slate-300 rounded-lg">
+            <select id="new-category" class="w-full p-2 border border-slate-300 rounded-lg text-xs">
               <option value="1">Prescriptions (POM)</option>
               <option value="2">Over The Counter (OTC)</option>
               <option value="3">Vitamins / Supps</option>
@@ -431,7 +475,7 @@
           </div>
           <div>
             <label class="block text-slate-600 font-bold mb-1">Tax Classification *</label>
-            <select id="new-tax-class" class="w-full p-2 border border-slate-300 rounded-lg font-semibold">
+            <select id="new-tax-class" class="w-full p-2 border border-slate-300 rounded-lg font-semibold text-xs">
               <option value="1">[E] Exempt (0% - Medicines)</option>
               <option value="3">[A] Standard (16% VAT)</option>
               <option value="2">[B] Zero-Rated (0%)</option>
@@ -439,7 +483,7 @@
           </div>
           <div>
             <label class="block text-slate-600 font-bold mb-1">Base Unit</label>
-            <select id="new-base-unit" class="w-full p-2 border border-slate-300 rounded-lg">
+            <select id="new-base-unit" class="w-full p-2 border border-slate-300 rounded-lg text-xs">
               <option value="1">Tablet/Capsule</option>
               <option value="2">Blister/Strip</option>
               <option value="3">Box/Pack</option>
@@ -449,21 +493,21 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-2 gap-2.5 sm:gap-3">
           <div>
             <label class="block text-slate-600 font-bold mb-1">Selling Price (KES) *</label>
-            <input id="new-selling-price" type="number" step="0.01" placeholder="150.00" class="w-full p-2 border border-slate-300 rounded-lg font-bold text-emerald-700" required />
+            <input id="new-selling-price" type="number" step="0.01" placeholder="150.00" class="w-full p-2 border border-slate-300 rounded-lg font-bold text-emerald-700 text-xs sm:text-sm" required />
           </div>
           <div>
             <label class="block text-slate-600 font-bold mb-1">Cost Price (KES)</label>
-            <input id="new-cost-price" type="number" step="0.01" placeholder="95.00" class="w-full p-2 border border-slate-300 rounded-lg" />
+            <input id="new-cost-price" type="number" step="0.01" placeholder="95.00" class="w-full p-2 border border-slate-300 rounded-lg text-xs sm:text-sm" />
           </div>
         </div>
 
         <!-- Initial Consignment Batch Details -->
         <div class="pt-2 border-t border-slate-200">
           <span class="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Initial Batch Stock In (FEFO Inventory)</span>
-          <div class="grid grid-cols-3 gap-2 mt-1.5">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1.5">
             <div>
               <label class="block text-slate-500 font-bold mb-0.5">Batch Number</label>
               <input id="new-batch-no" type="text" placeholder="BAT-AUG-2026" class="w-full p-1.5 border border-slate-300 rounded text-xs font-mono" />
@@ -480,7 +524,7 @@
         </div>
       </div>
 
-      <div class="p-3.5 bg-slate-50 border-t border-slate-200 flex space-x-2">
+      <div class="p-3 bg-slate-50 border-t border-slate-200 flex space-x-2 flex-shrink-0">
         <button id="cancel-product-btn" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 rounded-xl text-xs">Cancel</button>
         <button id="save-product-btn" class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2 rounded-xl text-xs">
           Save to Inventory
@@ -497,12 +541,14 @@
     let currentCategory = "";
     let activeCheckoutRequestId = null;
     let mpesaPollingInterval = null;
+    let currentMobileTab = "catalog"; // "catalog" or "cart"
 
     // Elements
     const searchInput = document.getElementById("search-input");
     const productsGrid = document.getElementById("products-grid");
     const cartContainer = document.getElementById("cart-items-container");
     const cartBadge = document.getElementById("cart-count-badge");
+    const mobileTabCartBadge = document.getElementById("mobile-tab-cart-badge");
     const emptyMsg = document.getElementById("empty-cart-msg");
     const subtotalEl = document.getElementById("summary-subtotal");
     const exemptEl = document.getElementById("summary-exempt");
@@ -511,6 +557,16 @@
     const payCashBtn = document.getElementById("pay-cash-btn");
     const payMpesaBtn = document.getElementById("pay-mpesa-btn");
     
+    // Mobile Elements
+    const sectionCatalog = document.getElementById("section-catalog");
+    const sectionCart = document.getElementById("section-cart");
+    const tabCatalog = document.getElementById("tab-catalog");
+    const tabCart = document.getElementById("tab-cart");
+    const floatingBar = document.getElementById("mobile-floating-cart-bar");
+    const floatingCartCount = document.getElementById("floating-cart-count");
+    const floatingCartTotal = document.getElementById("floating-cart-total");
+    const floatingViewCartBtn = document.getElementById("floating-view-cart-btn");
+
     // Modals
     const receiptModal = document.getElementById("receipt-modal");
     const receiptTextEl = document.getElementById("receipt-text");
@@ -528,10 +584,66 @@
     const alertsModal = document.getElementById("alerts-modal");
     const refundModal = document.getElementById("refund-modal");
 
-    // Live Clock
+    // Live Clocks
     setInterval(() => {
-      document.getElementById("live-clock").textContent = new Date().toLocaleTimeString();
+      const timeStr = new Date().toLocaleTimeString();
+      document.getElementById("live-clock").textContent = timeStr;
+      const dt = document.getElementById("live-clock-desktop");
+      if (dt) dt.textContent = timeStr;
     }, 1000);
+
+    // Mobile Tab Switching
+    function setMobileTab(tab) {
+      currentMobileTab = tab;
+      if (window.innerWidth < 768) {
+        if (tab === "catalog") {
+          sectionCatalog.classList.remove("hidden");
+          sectionCart.classList.add("hidden");
+          sectionCart.classList.remove("flex");
+          tabCatalog.classList.add("border-emerald-600", "text-emerald-700");
+          tabCatalog.classList.remove("border-transparent", "text-slate-500");
+          tabCart.classList.remove("border-emerald-600", "text-emerald-700");
+          tabCart.classList.add("border-transparent", "text-slate-500");
+          updateFloatingBar();
+        } else {
+          sectionCatalog.classList.add("hidden");
+          sectionCart.classList.remove("hidden");
+          sectionCart.classList.add("flex");
+          tabCart.classList.add("border-emerald-600", "text-emerald-700");
+          tabCart.classList.remove("border-transparent", "text-slate-500");
+          tabCatalog.classList.remove("border-emerald-600", "text-emerald-700");
+          tabCatalog.classList.add("border-transparent", "text-slate-500");
+          floatingBar.classList.add("translate-y-full");
+        }
+      }
+    }
+
+    tabCatalog.addEventListener("click", () => setMobileTab("catalog"));
+    tabCart.addEventListener("click", () => setMobileTab("cart"));
+    floatingViewCartBtn.addEventListener("click", () => setMobileTab("cart"));
+
+    window.addEventListener("resize", () => {
+      if (window.innerWidth >= 768) {
+        sectionCatalog.classList.remove("hidden");
+        sectionCart.classList.remove("hidden");
+        sectionCart.classList.add("flex");
+        floatingBar.classList.add("translate-y-full");
+      } else {
+        setMobileTab(currentMobileTab);
+      }
+    });
+
+    function updateFloatingBar() {
+      if (window.innerWidth < 768 && currentMobileTab === "catalog" && cart.length > 0) {
+        const total = getCartTotal();
+        const totalQty = cart.reduce((sum, i) => sum + i.quantity, 0);
+        floatingCartCount.textContent = totalQty;
+        floatingCartTotal.textContent = `KES ${total.toFixed(2)}`;
+        floatingBar.classList.remove("translate-y-full");
+      } else {
+        floatingBar.classList.add("translate-y-full");
+      }
+    }
 
     // Load Products on startup
     async function loadProducts(query = "") {
@@ -581,24 +693,26 @@
         const badgeText = isExempt ? '[E] Exempt 0%' : '[A] 16% VAT';
 
         const card = document.createElement("div");
-        card.className = "bg-white p-3.5 rounded-xl border border-slate-200 hover:border-emerald-500 hover:shadow-md transition cursor-pointer flex flex-col justify-between";
+        card.className = "bg-white p-3 sm:p-3.5 rounded-xl border border-slate-200 hover:border-emerald-500 hover:shadow-md transition cursor-pointer flex flex-col justify-between active:scale-[0.99]";
         card.innerHTML = `
           <div>
             <div class="flex items-start justify-between gap-1">
-              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeColor}">${badgeText}</span>
-              <span class="text-[10px] text-slate-400 font-mono">${p.sku}</span>
+              <span class="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeColor}">${badgeText}</span>
+              <span class="text-[9px] sm:text-[10px] text-slate-400 font-mono">${p.sku}</span>
             </div>
-            <h3 class="font-bold text-slate-800 text-sm mt-1.5 leading-snug">${p.brandName}</h3>
-            <p class="text-[11px] text-slate-500 italic">${p.genericName || ''}</p>
+            <h3 class="font-bold text-slate-800 text-xs sm:text-sm mt-1 leading-snug">${p.brandName}</h3>
+            <p class="text-[10px] sm:text-[11px] text-slate-500 italic">${p.genericName || ''}</p>
           </div>
-          <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
-            <span class="text-sm font-black text-emerald-700">KES ${p.sellingPrice.toFixed(2)}</span>
-            <button class="bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white px-2.5 py-1 rounded-lg text-xs font-bold transition">
-              + Add
+          <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between">
+            <span class="text-xs sm:text-sm font-black text-emerald-700">KES ${p.sellingPrice.toFixed(2)}</span>
+            <button class="bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center space-x-1">
+              <span>+ Add</span>
             </button>
           </div>
         `;
-        card.addEventListener("click", () => addToCart(p));
+        card.addEventListener("click", () => {
+          addToCart(p);
+        });
         productsGrid.appendChild(card);
       });
     }
@@ -617,6 +731,7 @@
         });
       }
       renderCart();
+      updateFloatingBar();
     }
 
     // Render Cart & Compute Live Taxes
@@ -631,6 +746,8 @@
         vatEl.textContent = "KES 0.00";
         totalEl.textContent = "KES 0.00";
         cartBadge.textContent = "0";
+        mobileTabCartBadge.textContent = "0";
+        updateFloatingBar();
         return;
       }
 
@@ -656,20 +773,20 @@
         }
 
         const row = document.createElement("div");
-        row.className = "bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex items-center justify-between text-xs";
+        row.className = "bg-slate-50 p-2 sm:p-2.5 rounded-xl border border-slate-200 flex items-center justify-between text-xs";
         row.innerHTML = `
-          <div class="flex-1 mr-2">
-            <div class="font-bold text-slate-800 leading-snug">${item.product.brandName}</div>
-            <div class="text-[11px] text-slate-500">KES ${item.unitPrice.toFixed(2)} / unit</div>
+          <div class="flex-1 mr-2 min-w-0">
+            <div class="font-bold text-slate-800 leading-snug truncate">${item.product.brandName}</div>
+            <div class="text-[10px] sm:text-[11px] text-slate-500">KES ${item.unitPrice.toFixed(2)} / unit</div>
           </div>
-          <div class="flex items-center space-x-2">
+          <div class="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0">
             <div class="flex items-center border border-slate-300 rounded-lg bg-white overflow-hidden">
-              <button class="px-2 py-0.5 hover:bg-slate-100 font-bold" onclick="updateQty(${index}, -1)">-</button>
+              <button class="px-2 py-0.5 hover:bg-slate-100 font-bold active:bg-slate-200" onclick="updateQty(${index}, -1)">-</button>
               <span class="px-2 font-bold">${item.quantity}</span>
-              <button class="px-2 py-0.5 hover:bg-slate-100 font-bold" onclick="updateQty(${index}, 1)">+</button>
+              <button class="px-2 py-0.5 hover:bg-slate-100 font-bold active:bg-slate-200" onclick="updateQty(${index}, 1)">+</button>
             </div>
-            <span class="font-bold text-slate-800 w-16 text-right">KES ${itemGross.toFixed(2)}</span>
-            <button class="text-rose-500 hover:text-rose-700 ml-1" onclick="removeItem(${index})">
+            <span class="font-bold text-slate-800 w-14 sm:w-16 text-right">KES ${itemGross.toFixed(2)}</span>
+            <button class="text-rose-500 hover:text-rose-700 ml-1 p-1" onclick="removeItem(${index})">
               <i class="fa-solid fa-trash-can"></i>
             </button>
           </div>
@@ -678,10 +795,12 @@
       });
 
       cartBadge.textContent = totalQty;
+      mobileTabCartBadge.textContent = totalQty;
       subtotalEl.textContent = `KES ${subtotal.toFixed(2)}`;
       exemptEl.textContent = `KES ${exemptTotal.toFixed(2)}`;
       vatEl.textContent = `KES ${vatTotal.toFixed(2)}`;
       totalEl.textContent = `KES ${subtotal.toFixed(2)}`;
+      updateFloatingBar();
     }
 
     window.updateQty = (index, delta) => {
@@ -747,6 +866,7 @@
         cart = [];
         renderCart();
         checkAlerts();
+        setMobileTab("catalog");
       } catch (err) {
         alert("Transaction error: " + err.message);
       }
@@ -917,41 +1037,6 @@
       }
     });
 
-    // Cash Checkout
-    payCashBtn.addEventListener("click", () => processCheckout("CASH"));
-    document.getElementById("clear-cart-btn").addEventListener("click", () => { cart = []; renderCart(); });
-    document.getElementById("close-modal-btn").addEventListener("click", () => receiptModal.classList.add("hidden"));
-    document.getElementById("new-sale-btn").addEventListener("click", () => receiptModal.classList.add("hidden"));
-    document.getElementById("print-receipt-btn").addEventListener("click", () => window.print());
-
-    // Search events
-    searchInput.addEventListener("input", (e) => loadProducts(e.target.value));
-    document.getElementById("clear-search-btn").addEventListener("click", () => { searchInput.value = ""; loadProducts(""); });
-
-    // Category pills
-    document.querySelectorAll(".cat-pill").forEach(pill => {
-      pill.addEventListener("click", () => {
-        document.querySelectorAll(".cat-pill").forEach(p => p.classList.remove("active", "bg-emerald-700", "text-white"));
-        pill.classList.add("active", "bg-emerald-700", "text-white");
-        currentCategory = pill.getAttribute("data-cat");
-        renderProducts();
-      });
-    });
-
-    // Keyboard Shortcuts (F2: Search, F9: Cash, F10: M-Pesa, Esc: Close)
-    window.addEventListener("keydown", (e) => {
-      if (e.key === "F2") { e.preventDefault(); searchInput.focus(); searchInput.select(); }
-      if (e.key === "F9") { e.preventDefault(); processCheckout("CASH"); }
-      if (e.key === "F10") { e.preventDefault(); payMpesaBtn.click(); }
-      if (e.key === "Escape") {
-        receiptModal.classList.add("hidden");
-        mpesaModal.classList.add("hidden");
-        zreportModal.classList.add("hidden");
-        alertsModal.classList.add("hidden");
-        refundModal.classList.add("hidden");
-      }
-    });
-
     // Add Product Modal Handlers
     const productModal = document.getElementById("product-modal");
     document.getElementById("nav-add-product-btn").addEventListener("click", () => {
@@ -1025,10 +1110,48 @@
       }
     });
 
+    // Cash Checkout
+    payCashBtn.addEventListener("click", () => processCheckout("CASH"));
+    document.getElementById("clear-cart-btn").addEventListener("click", () => { cart = []; renderCart(); updateFloatingBar(); });
+    document.getElementById("close-modal-btn").addEventListener("click", () => receiptModal.classList.add("hidden"));
+    document.getElementById("new-sale-btn").addEventListener("click", () => receiptModal.classList.add("hidden"));
+    document.getElementById("print-receipt-btn").addEventListener("click", () => window.print());
+
+    // Search events
+    searchInput.addEventListener("input", (e) => loadProducts(e.target.value));
+    document.getElementById("clear-search-btn").addEventListener("click", () => { searchInput.value = ""; loadProducts(""); });
+
+    // Category pills
+    document.querySelectorAll(".cat-pill").forEach(pill => {
+      pill.addEventListener("click", () => {
+        document.querySelectorAll(".cat-pill").forEach(p => p.classList.remove("active", "bg-emerald-700", "text-white"));
+        pill.classList.add("active", "bg-emerald-700", "text-white");
+        currentCategory = pill.getAttribute("data-cat");
+        renderProducts();
+      });
+    });
+
+    // Keyboard Shortcuts (F2: Search, F9: Cash, F10: M-Pesa, Esc: Close)
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "F2") { e.preventDefault(); searchInput.focus(); searchInput.select(); }
+      if (e.key === "F9") { e.preventDefault(); processCheckout("CASH"); }
+      if (e.key === "F10") { e.preventDefault(); payMpesaBtn.click(); }
+      if (e.key === "Escape") {
+        receiptModal.classList.add("hidden");
+        mpesaModal.classList.add("hidden");
+        zreportModal.classList.add("hidden");
+        alertsModal.classList.add("hidden");
+        refundModal.classList.add("hidden");
+        productModal.classList.add("hidden");
+      }
+    });
+
     // Initial Load
     loadProducts();
     checkAlerts();
+    if (window.innerWidth < 768) {
+      setMobileTab("catalog");
+    }
   </script>
 </body>
 </html>
-
