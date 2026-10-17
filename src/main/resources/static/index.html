@@ -55,6 +55,12 @@
         <span>Returns / CN</span>
       </button>
 
+      <!-- Add Medication Button -->
+      <button id="nav-add-product-btn" class="flex items-center space-x-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition shadow-sm">
+        <i class="fa-solid fa-pills"></i>
+        <span>+ Add Medication</span>
+      </button>
+
       <!-- End of Day Z-Report Button -->
       <button id="nav-zreport-btn" class="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition shadow-sm">
         <i class="fa-solid fa-file-invoice-dollar"></i>
@@ -373,6 +379,111 @@
         <button id="cancel-refund-btn" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 rounded-lg text-xs">Cancel</button>
         <button id="submit-refund-btn" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-lg text-xs">
           Issue Credit Note
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Product & Consignment Stock Modal -->
+  <div id="product-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+      <div class="px-5 py-3.5 bg-emerald-700 text-white flex items-center justify-between">
+        <h3 class="font-bold flex items-center space-x-2">
+          <i class="fa-solid fa-pills text-emerald-300"></i>
+          <span>Add New Medicine & Initial Stock</span>
+        </h3>
+        <button id="close-product-modal-btn" class="text-emerald-200 hover:text-white text-lg">&times;</button>
+      </div>
+
+      <div class="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-600 font-bold mb-1">Brand Name *</label>
+            <input id="new-brand-name" type="text" placeholder="e.g. Augmentin 625mg" class="w-full p-2 border border-slate-300 rounded-lg" required />
+          </div>
+          <div>
+            <label class="block text-slate-600 font-bold mb-1">Generic / Active Ingredient</label>
+            <input id="new-generic-name" type="text" placeholder="e.g. Amoxicillin / Clavulanic" class="w-full p-2 border border-slate-300 rounded-lg" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-600 font-bold mb-1">Barcode / EAN</label>
+            <input id="new-barcode" type="text" placeholder="890123456005" class="w-full p-2 border border-slate-300 rounded-lg font-mono" />
+          </div>
+          <div>
+            <label class="block text-slate-600 font-bold mb-1">SKU / Item Code</label>
+            <input id="new-sku" type="text" placeholder="MED-AUG-625" class="w-full p-2 border border-slate-300 rounded-lg font-mono" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-slate-600 font-bold mb-1">Category</label>
+            <select id="new-category" class="w-full p-2 border border-slate-300 rounded-lg">
+              <option value="1">Prescriptions (POM)</option>
+              <option value="2">Over The Counter (OTC)</option>
+              <option value="3">Vitamins / Supps</option>
+              <option value="4">Cosmetics & Care</option>
+              <option value="5">Medical Supplies</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-600 font-bold mb-1">Tax Classification *</label>
+            <select id="new-tax-class" class="w-full p-2 border border-slate-300 rounded-lg font-semibold">
+              <option value="1">[E] Exempt (0% - Medicines)</option>
+              <option value="3">[A] Standard (16% VAT)</option>
+              <option value="2">[B] Zero-Rated (0%)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-600 font-bold mb-1">Base Unit</label>
+            <select id="new-base-unit" class="w-full p-2 border border-slate-300 rounded-lg">
+              <option value="1">Tablet/Capsule</option>
+              <option value="2">Blister/Strip</option>
+              <option value="3">Box/Pack</option>
+              <option value="4">Bottle</option>
+              <option value="5">Tube</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-600 font-bold mb-1">Selling Price (KES) *</label>
+            <input id="new-selling-price" type="number" step="0.01" placeholder="150.00" class="w-full p-2 border border-slate-300 rounded-lg font-bold text-emerald-700" required />
+          </div>
+          <div>
+            <label class="block text-slate-600 font-bold mb-1">Cost Price (KES)</label>
+            <input id="new-cost-price" type="number" step="0.01" placeholder="95.00" class="w-full p-2 border border-slate-300 rounded-lg" />
+          </div>
+        </div>
+
+        <!-- Initial Consignment Batch Details -->
+        <div class="pt-2 border-t border-slate-200">
+          <span class="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Initial Batch Stock In (FEFO Inventory)</span>
+          <div class="grid grid-cols-3 gap-2 mt-1.5">
+            <div>
+              <label class="block text-slate-500 font-bold mb-0.5">Batch Number</label>
+              <input id="new-batch-no" type="text" placeholder="BAT-AUG-2026" class="w-full p-1.5 border border-slate-300 rounded text-xs font-mono" />
+            </div>
+            <div>
+              <label class="block text-slate-500 font-bold mb-0.5">Expiry Date</label>
+              <input id="new-expiry-date" type="date" class="w-full p-1.5 border border-slate-300 rounded text-xs" />
+            </div>
+            <div>
+              <label class="block text-slate-500 font-bold mb-0.5">Stock Quantity</label>
+              <input id="new-stock-qty" type="number" placeholder="200" class="w-full p-1.5 border border-slate-300 rounded text-xs font-bold" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-3.5 bg-slate-50 border-t border-slate-200 flex space-x-2">
+        <button id="cancel-product-btn" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 rounded-xl text-xs">Cancel</button>
+        <button id="save-product-btn" class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2 rounded-xl text-xs">
+          Save to Inventory
         </button>
       </div>
     </div>
@@ -838,6 +949,79 @@
         zreportModal.classList.add("hidden");
         alertsModal.classList.add("hidden");
         refundModal.classList.add("hidden");
+      }
+    });
+
+    // Add Product Modal Handlers
+    const productModal = document.getElementById("product-modal");
+    document.getElementById("nav-add-product-btn").addEventListener("click", () => {
+      document.getElementById("new-brand-name").value = "";
+      document.getElementById("new-generic-name").value = "";
+      document.getElementById("new-barcode").value = "";
+      document.getElementById("new-sku").value = "";
+      document.getElementById("new-selling-price").value = "";
+      document.getElementById("new-cost-price").value = "";
+      document.getElementById("new-batch-no").value = "";
+      document.getElementById("new-expiry-date").value = "";
+      document.getElementById("new-stock-qty").value = "";
+      productModal.classList.remove("hidden");
+    });
+
+    document.getElementById("close-product-modal-btn").addEventListener("click", () => productModal.classList.add("hidden"));
+    document.getElementById("cancel-product-btn").addEventListener("click", () => productModal.classList.add("hidden"));
+
+    document.getElementById("save-product-btn").addEventListener("click", async () => {
+      const brand = document.getElementById("new-brand-name").value.trim();
+      const generic = document.getElementById("new-generic-name").value.trim();
+      const barcode = document.getElementById("new-barcode").value.trim();
+      const sku = document.getElementById("new-sku").value.trim();
+      const catId = parseInt(document.getElementById("new-category").value);
+      const taxId = parseInt(document.getElementById("new-tax-class").value);
+      const unitId = parseInt(document.getElementById("new-base-unit").value);
+      const sellingPrice = parseFloat(document.getElementById("new-selling-price").value);
+      const costPrice = parseFloat(document.getElementById("new-cost-price").value) || 0;
+      const batchNo = document.getElementById("new-batch-no").value.trim();
+      const expiryDate = document.getElementById("new-expiry-date").value;
+      const stockQty = parseInt(document.getElementById("new-stock-qty").value) || 0;
+
+      if (!brand) {
+        alert("Please enter the Brand Name.");
+        return;
+      }
+      if (isNaN(sellingPrice) || sellingPrice <= 0) {
+        alert("Please enter a valid Selling Price.");
+        return;
+      }
+
+      const payload = {
+        brandName: brand,
+        genericName: generic || null,
+        barcode: barcode || null,
+        sku: sku || null,
+        categoryId: catId,
+        taxClassId: taxId,
+        baseUnitId: unitId,
+        sellingPrice: sellingPrice,
+        costPrice: costPrice,
+        initialBatchNumber: batchNo || null,
+        initialExpiryDate: expiryDate || null,
+        initialStockQuantity: stockQty > 0 ? stockQty : null
+      };
+
+      try {
+        const res = await fetch('/api/v1/inventory/products', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error("Failed to save product to inventory");
+        productModal.classList.add("hidden");
+        loadProducts();
+        checkAlerts();
+        alert(`Successfully added ${brand} to the pharmacy inventory!`);
+      } catch (err) {
+        alert("Error: " + err.message);
       }
     });
 
