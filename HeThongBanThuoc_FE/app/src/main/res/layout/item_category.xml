@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="8dp"
+    android:background="@drawable/bg_category_card"
+    android:gravity="center"
+    android:layout_margin="6dp">
+
+    <!-- Icon / ảnh danh mục -->
+    <ImageView
+        android:id="@+id/imgCategory"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:src="@drawable/brain"
+        android:layout_gravity="center" />
+
+    <!-- Tên danh mục -->
+    <TextView
+        android:id="@+id/txtCategoryName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Tên danh mục"
+        android:textStyle="bold"
+        android:textColor="@android:color/black"
+        android:layout_marginTop="6dp"
+        android:gravity="center" />
+
+    <!-- Số lượng sản phẩm -->
+    <TextView
+        android:id="@+id/txtCategoryCount"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Có 0 sản phẩm"
+        android:textColor="@android:color/darker_gray"
+        android:textSize="12sp"
+        android:gravity="center" />
+</LinearLayout>

@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:background="@android:color/white"
+    android:padding="16dp"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <TextView
+        android:text="Chọn thời gian giao hàng"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:layout_marginBottom="16dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <!-- Chọn ngày -->
+    <TextView
+        android:text="Chọn ngày nhận:"
+        android:textSize="14sp"
+        android:textColor="#000000"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <LinearLayout
+        android:id="@+id/groupNgay"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="2"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="16dp">
+
+        <Button
+            android:id="@+id/btnNgay1"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#E3F2FD"
+            android:textColor="#1976D2" />
+
+        <Button
+            android:id="@+id/btnNgay2"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#E3F2FD"
+            android:textColor="#1976D2"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/groupNgay2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="2"
+        android:layout_marginBottom="16dp">
+
+        <Button
+            android:id="@+id/btnNgay3"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#E3F2FD"
+            android:textColor="#1976D2" />
+
+        <Button
+            android:id="@+id/btnNgay4"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#E3F2FD"
+            android:textColor="#1976D2"
+            android:layout_marginStart="8dp" />
+    </LinearLayout>
+
+    <!-- Chọn giờ -->
+    <TextView
+        android:text="Chọn giờ nhận:"
+        android:textSize="14sp"
+        android:textColor="#000000"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <GridLayout
+        android:id="@+id/groupGio"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="3"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="16dp">
+
+        <Button android:id="@+id/btn15_16" android:text="15:00 - 16:00"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+        <Button android:id="@+id/btn16_17" android:text="16:00 - 17:00"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+        <Button android:id="@+id/btn17_18" android:text="17:00 - 18:00"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+        <Button android:id="@+id/btn18_19" android:text="18:00 - 19:00"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+        <Button android:id="@+id/btn19_20" android:text="19:00 - 20:00"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+        <Button android:id="@+id/btn20_21" android:text="20:00 - 21:00"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+    </GridLayout>
+
+    <!-- Hiển thị thời gian nhận dự kiến -->
+    <TextView
+        android:id="@+id/txtThoiGianDuKien"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Thời gian nhận hàng dự kiến:"
+        android:textColor="#666"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/btnXacNhanThoiGian"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:backgroundTint="#1976D2"
+        android:text="Xác nhận"
+        android:textColor="@android:color/white" />
+
+</LinearLayout>

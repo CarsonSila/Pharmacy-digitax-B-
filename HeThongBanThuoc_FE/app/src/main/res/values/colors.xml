@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Màu mặc định Android Studio -->
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Thêm các màu custom cho dots -->
+    <color name="gray">#B0B0B0</color>
+    <color name="blue">#2196F3</color>
+    <color name="gray_dark">#4B5563</color>
+
+    <!-- Màu vàng cho điểm coin -->
+    <color name="yellow_coin">#FFD54F</color> <!-- Vàng sáng ấm -->
+
+    <!-- Màu chính của app -->
+    <color name="colorPrimary">#2196F3</color>
+    <color name="colorPrimaryDark">#1976D2</color>
+    <color name="colorAccent">#FF4081</color>
+
+    <!-- Màu nền -->
+    <color name="background_color">#F5F5F5</color>
+    <color name="unread_background">#E3F2FD</color>
+
+    <!-- Màu cho từng loại thông báo -->
+    <color name="donhang_color">#2196F3</color>
+    <color name="hethong_color">#9E9E9E</color>
+    <color name="khuyenmai_color">#F44336</color>
+    <color name="doiqua_color">#4CAF50</color>
+    <color name="tuvan_color">#FF9800</color>
+
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="blue_primary">#2196F3</color>
+    <color name="blue_button">#2196F3</color>
+    <color name="blue_light">#64B5F6</color>
+    <color name="blue_dark">#1565C0</color>
+
+    <!-- Màu hệ thống phụ -->
+    <color name="divider">#E0E0E0</color>
+    <color name="gray_light">#F5F5F5</color>
+    <color name="gray_medium">#CCCCCC</color>
+
+    <!-- Màu cảnh báo / hết hạn -->
+    <color name="orange_warning">#FF9800</color>
+
+    <!-- Màu thông báo trạng thái -->
+    <color name="green_success">#4CAF50</color>
+    <color name="red_error">#E53935</color>
+    <color name="green_dark">#388E3C</color>
+
+    <color name="primary">#3F51B5</color>
+
+    <color name="orange">#FF6B00</color>
+    <color name="green">#4CAF50</color>
+
+    <color name="switch_track_on">#1976D2</color>        <!-- nền khi bật -->
+    <color name="switch_track_off">#B0BEC5</color>       <!-- nền khi tắt -->
+    <color name="switch_thumb_on">#FFFFFF</color>        <!-- nút khi bật -->
+    <color name="switch_thumb_off">#ECEFF1</color>       <!-- nút khi tắt -->
+
+</resources>

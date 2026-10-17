@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background_color"
+    tools:context=".feature_rewards.RewardsActivity">
+
+    <!-- SwipeRefreshLayout chứa toàn bộ giao diện (header + nội dung) -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefresh"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- NestedScrollView để scroll toàn bộ nội dung -->
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+
+                <!-- HEADER -->
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="300dp">
+
+                    <ImageView
+                        android:id="@+id/imgHeaderBackground"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/bonus_points"
+                        android:contentDescription="Ảnh nền điểm thưởng" />
+
+                    <LinearLayout
+                        android:id="@+id/headerContent"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:orientation="vertical"
+                        android:padding="20dp"
+                        android:gravity="start">
+
+                        <!-- Nút chức năng -->
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <LinearLayout
+                                android:id="@+id/layoutQuaCuaToi"
+                                android:layout_width="wrap_content"
+                                android:layout_height="48dp"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:background="@drawable/bg_button_primary"
+                                android:paddingHorizontal="16dp"
+                                android:paddingVertical="8dp"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:layout_alignParentStart="true">
+
+                                <ImageView
+                                    android:id="@+id/icGift"
+                                    android:layout_width="20dp"
+                                    android:layout_height="20dp"
+                                    android:src="@drawable/gift" />
+
+                                <TextView
+                                    android:id="@+id/tvQuaCuaToi"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Quà của tôi"
+                                    android:textColor="@color/white"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold"
+                                    android:layout_marginStart="6dp" />
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:id="@+id/layoutLichSu"
+                                android:layout_width="wrap_content"
+                                android:layout_height="48dp"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:background="@drawable/bg_button_primary"
+                                android:paddingHorizontal="16dp"
+                                android:paddingVertical="8dp"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:layout_toEndOf="@id/layoutQuaCuaToi"
+                                android:layout_marginStart="12dp">
+
+                                <ImageView
+                                    android:id="@+id/icHistory"
+                                    android:layout_width="20dp"
+                                    android:layout_height="20dp"
+                                    android:src="@drawable/history" />
+
+                                <TextView
+                                    android:id="@+id/tvLichSu"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="Lịch sử"
+                                    android:textColor="@color/white"
+                                    android:textSize="14sp"
+                                    android:textStyle="bold"
+                                    android:layout_marginStart="6dp" />
+                            </LinearLayout>
+                        </RelativeLayout>
+
+                        <!-- Khu vực điểm thưởng -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_marginTop="40dp"
+                            android:gravity="start">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Điểm thưởng"
+                                android:textColor="@android:color/white"
+                                android:textStyle="bold"
+                                android:textSize="16sp" />
+
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:layout_marginTop="8dp">
+
+                                <ImageView
+                                    android:layout_width="40dp"
+                                    android:layout_height="40dp"
+                                    android:src="@drawable/coin"
+                                    android:contentDescription="Coin" />
+
+                                <TextView
+                                    android:id="@+id/tvTongDiem"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="1.252"
+                                    android:textColor="@color/yellow_coin"
+                                    android:textSize="40sp"
+                                    android:textStyle="bold"
+                                    android:layout_marginStart="8dp" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Bắt đầu tích lũy ngay thôi nào "
+                                android:textColor="@android:color/white"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:padding="8dp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </FrameLayout>
+
+                <!-- Nội dung chính -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <!-- Header quà tặng + Xem tất cả -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <!-- 2 dòng text bên trái -->
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Quà tặng"
+                                android:textColor="@color/text_primary"
+                                android:textSize="18sp"
+                                android:textStyle="bold"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Tích điểm và dổi quà ngay thôi nào"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="14sp"/>
+                        </LinearLayout>
+
+                        <!-- TextView "Xem tất cả" bên phải -->
+                        <TextView
+                            android:id="@+id/tvXemTatCa"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Xem tất cả"
+                            android:textColor="@color/blue_primary"
+                            android:textSize="14sp"
+                            android:padding="8dp"/>
+                    </LinearLayout>
+
+
+                    <!-- Filter điểm -->
+                    <HorizontalScrollView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:scrollbars="none"
+                        android:layout_marginTop="12dp">
+
+                        <com.google.android.material.chip.ChipGroup
+                            android:id="@+id/chipGroupFilter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            app:singleSelection="true"
+                            app:selectionRequired="false">
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chipTatCa"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Tất cả"
+                                android:checked="true"
+                                style="@style/Widget.MaterialComponents.Chip.Choice"/>
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chip1500"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="1.500 điểm"
+                                style="@style/Widget.MaterialComponents.Chip.Choice"/>
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chip3000"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="3.000 điểm"
+                                style="@style/Widget.MaterialComponents.Chip.Choice"/>
+
+                            <com.google.android.material.chip.Chip
+                                android:id="@+id/chip4500"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="4.500 điểm"
+                                style="@style/Widget.MaterialComponents.Chip.Choice"/>
+                        </com.google.android.material.chip.ChipGroup>
+                    </HorizontalScrollView>
+
+                    <!-- RecyclerView danh sách quà (Grid 2 cột) -->
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/rvQuaTang"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:nestedScrollingEnabled="false"
+                        tools:listitem="@layout/item_qua_tang"
+                        tools:itemCount="4"/>
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

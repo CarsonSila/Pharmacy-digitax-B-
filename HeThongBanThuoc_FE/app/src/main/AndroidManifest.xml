@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@drawable/ic_logo"
+        android:label="@string/app_name"
+        android:roundIcon="@drawable/ic_logo"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.HETHONGBANTHUOC"
+        android:usesCleartextTraffic="true">
+        <activity
+            android:name=".feature_shopping.order.OrderDetailActivity"
+            android:exported="true" />
+        <activity
+            android:name=".feature_product.search.SearchActivity"
+            android:exported="false" />
+        <activity
+            android:name=".feature_shopping.order.XacNhanDonHangActivity"
+            android:exported="false" />
+        <activity
+            android:name=".feature_shopping.cart.BottomSheetChonMua"
+            android:exported="false" />
+        <activity
+            android:name=".feature_home.CategoryActivity"
+            android:exported="false" />
+        <activity
+            android:name=".feature_profile.account.Dialog_menu_sidebar"
+            android:exported="true" />
+        <activity
+            android:name=".feature_shopping.order.DonHangActivity"
+            android:exported="true" />
+        <activity
+            android:name=".feature_rewards.Button_sheet_doi_quaActivity"
+            android:exported="false" />
+        <activity
+            android:name=".feature_rewards.QuaCuaToiActivity"
+            android:exported="false" />
+        <activity
+            android:name=".feature_rewards.LichSuDoiQuaActivity"
+            android:exported="false" />
+        <activity
+            android:name=".feature_rewards.DanhSachQuaTangActivity"
+            android:exported="false" />
+        <activity
+            android:name=".feature_notification.ThongBaoDetaiActivity"
+            android:exported="true" />
+        <activity
+            android:name=".feature_rewards.RewardsActivity"
+            android:exported="true" />
+        <activity
+            android:name=".feature_home.Admin_HomePageActivity"
+            android:exported="false" />
+        <activity
+            android:name=".feature_chat.chat.ChatSessionActivity"
+            android:exported="false" />
+        <activity
+            android:name=".feature_auth.change_password.ChangePasswordActivity"
+            android:exported="true" />
+        <activity
+            android:name=".feature_profile.address.SelectCityActivity"
+            android:exported="true" />
+        <activity
+            android:name=".feature_profile.address.InfoAddressActivity"
+            android:exported="true" />
+        <activity
+            android:name=".feature_profile.address.AddAndressActivity"
+            android:exported="true" />
+        <activity
+            android:name=".feature_common.EmptyStateActivity"
+            android:exported="true" />
+        <activity
+            android:name=".feature_common.SuccessActivity"
+            android:exported="true"
+            android:theme="@style/Theme.App.BottomDialog" />
+        <activity
+            android:name=".feature_profile.personal.EditProfileActivity"
+            android:exported="true" />
+        <activity
+            android:name=".feature_profile.personal.PersonalActivity"
+            android:exported="true" />
+        <activity
+            android:name=".feature_notification.NotificationActivity"
+            android:exported="true" />
+        <activity
+            android:name=".feature_chat.chat.ChatActivity"
+            android:exported="true" />
+        <activity
+            android:name=".feature_shopping.cart.QuanLyGioHangActivity"
+            android:exported="false" />
+        <activity
+            android:name=".feature_chat.advise.AdviseActivity"
+            android:exported="true"
+            android:theme="@style/Theme.App.BottomDialog"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".feature_profile.account.AccountActivity"
+            android:exported="true" />
+        <activity
+            android:name=".feature_auth.forgot_password.ResetPasswordActivity"
+            android:exported="false" />
+        <activity
+            android:name=".feature_auth.register.OTPActivity"
+            android:exported="false" />
+        <activity
+            android:name=".feature_home.Main_HomePageActivity"
+            android:exported="true" />
+        <activity
+            android:name=".feature_auth.forgot_password.ForgotPasswwordActivity"
+            android:exported="false" />
+        <activity
+            android:name=".feature_auth.register.RegisterActivity"
+            android:exported="false" />
+        <activity
+            android:name=".feature_auth.login.LoginActivity"
+            android:exported="true" />
+        <activity
+            android:name=".feature_onboarding.OnboardingActivity"
+            android:exported="true" />
+        <activity
+            android:name=".feature_onboarding.SplashActivity"
+            android:exported="true" />
+    </application>
+
+</manifest>

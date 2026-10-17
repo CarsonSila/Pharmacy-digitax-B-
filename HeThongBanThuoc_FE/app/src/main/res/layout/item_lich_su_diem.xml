@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="2dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Header: Ngày -->
+        <TextView
+            android:id="@+id/tvNgayGiaoDich"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Ngày 16/07/2025"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp"
+            tools:text="Ngày 16/07/2025"/>
+
+        <!-- Nội dung giao dịch -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <!-- Tiêu đề -->
+                <TextView
+                    android:id="@+id/tvTieuDe"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Mua hàng tích điểm"
+                    android:textColor="@color/text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    tools:text="Mua hàng tích điểm"/>
+
+                <!-- Mô tả chi tiết -->
+                <TextView
+                    android:id="@+id/tvMoTa"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="vào lúc 07:41 tại Nhà thuốc Long Châu"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp"
+                    android:layout_marginTop="4dp"
+                    tools:text="vào lúc 07:41 tại Nhà thuốc Long Châu"/>
+
+                <!-- Chi tiết đơn hàng -->
+                <TextView
+                    android:id="@+id/tvChiTiet"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Đơn hàng VIÊN UỐNG BỔ SUNG VITAMIN VÀ KHOÁNG CHẤT LAB WELL MULTI VITAS 60V"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    android:maxLines="2"
+                    android:ellipsize="end"
+                    android:layout_marginTop="4dp"
+                    tools:text="Đơn hàng VIÊN UỐNG BỔ SUNG VITAMIN"/>
+
+                <!-- Link xem chi tiết -->
+                <TextView
+                    android:id="@+id/tvXemChiTiet"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Xem chi tiết"
+                    android:textColor="@color/blue_primary"
+                    android:textSize="13sp"
+                    android:layout_marginTop="4dp"
+                    android:padding="4dp"/>
+
+                <!-- Ngày hết hạn -->
+                <TextView
+                    android:id="@+id/tvNgayHetHan"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Điểm thưởng sẽ hết hạn vào ngày: 31/07/2026"
+                    android:textColor="@color/orange_warning"
+                    android:textSize="12sp"
+                    android:layout_marginTop="8dp"
+                    tools:text="Điểm thưởng sẽ hết hạn vào ngày: 31/07/2026"/>
+            </LinearLayout>
+
+            <!-- Số điểm -->
+            <TextView
+                android:id="@+id/tvSoDiem"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="+ 340"
+                android:textColor="@color/green_success"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:layout_marginStart="16dp"
+                tools:text="+ 340"/>
+        </LinearLayout>
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

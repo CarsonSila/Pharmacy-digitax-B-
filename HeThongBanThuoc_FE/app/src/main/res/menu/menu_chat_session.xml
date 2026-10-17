@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Menu popup cho mỗi session item -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Thêm mới (tạo mới một phiên ngay cả khi phiên cũ vẫn mở -->
+    <item
+        android:id="@+id/action_end_session"
+        android:title="Thêm mới"
+        android:icon="@drawable/addnew" />
+
+    <!-- Xóa phiên -->
+    <item
+        android:id="@+id/action_delete_session"
+        android:title="Xóa phiên"
+        android:icon="@drawable/litter" />
+</menu>

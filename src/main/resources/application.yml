@@ -1,0 +1,51 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: pharmacore-pos-backend
+
+  datasource:
+    url: jdbc:mysql://localhost:3307/pharmacore_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: root
+    password: Carsonsila@34
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 3
+      idle-timeout: 30000
+      max-lifetime: 1800000
+      connection-timeout: 10000
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.MySQLDialect
+
+# =====================================================================
+# DigiTax (KRA eTIMS Integration) Settings
+# =====================================================================
+digitax:
+  base-url: https://api.digitax.tech
+  api-key: ${DIGITAX_API_KEY:sandbox_demo_key_pharmacore}
+  branch-code: MAIN_BRANCH
+  timeout-ms: 1200
+  mock-mode: true # True for local testing without spending live DigiTax credits
+
+# =====================================================================
+# Thermal Receipt Printer (ESC/POS) Settings
+# =====================================================================
+pos:
+  printer:
+    network-ip: 192.168.1.100
+    port: 9100
+    paper-width-mm: 80
+    auto-cut: true
+
