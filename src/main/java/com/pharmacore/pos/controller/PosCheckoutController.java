@@ -24,6 +24,10 @@ public class PosCheckoutController {
     private final PosCheckoutService posCheckoutService;
     private final ProductRepository productRepository;
     private final ProductBatchRepository productBatchRepository;
+    private final com.pharmacore.pos.service.QrCodeGeneratorService qrCodeGeneratorService;
+    private final com.pharmacore.pos.repository.FiscalInvoiceRepository fiscalInvoiceRepository;
+    private final com.pharmacore.pos.repository.OrderRepository orderRepository;
+    private final com.pharmacore.pos.service.ReceiptPrinterService receiptPrinterService;
 
     /**
      * Main POS Checkout Endpoint.
@@ -54,6 +58,37 @@ public class PosCheckoutController {
     @GetMapping("/products/{productId}/batches")
     public ResponseEntity<List<ProductBatch>> getProductBatches(@PathVariable("productId") Integer productId) {
         return ResponseEntity.ok(productBatchRepository.findAvailableBatchesFefo(productId, LocalDate.now()));
+    }
+
+    /**
+     * Generates a PNG verification QR code for a fiscalized order.
+     */
+    @GetMapping(value = "/orders/{orderId}/qr-image", produces = org.springframework.http.MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> getOrderQrImage(
+            @PathVariable("orderId") Long orderId,
+            @RequestParam(name = "size", defaultValue = "250") int size
+    ) {
+        return fiscalInvoiceRepository.findByOrderOrderId(orderId)
+                .map(inv -> {
+                    String target = inv.getQrCodeUrl() != null ? inv.getQrCodeUrl() : inv.getQrCodeString();
+                    if (target == null) target = "KRA-PENDING";
+                    byte[] png = qrCodeGeneratorService.generateQrCodePng(target, size, size);
+                    return ResponseEntity.ok(png);
+                })
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Retrieves the formatted 80mm thermal receipt text for reprint or serial printing.
+     */
+    @GetMapping(value = "/orders/{orderId}/receipt", produces = org.springframework.http.MediaType.TEXT_PLAIN_VALUE)
+    public ResponseEntity<String> getOrderReceiptText(@PathVariable("orderId") Long orderId) {
+        return orderRepository.findById(orderId)
+                .map(order -> {
+                    var inv = fiscalInvoiceRepository.findByOrderOrderId(orderId).orElse(null);
+                    return ResponseEntity.ok(receiptPrinterService.buildThermalReceiptText(order, inv));
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 }
 

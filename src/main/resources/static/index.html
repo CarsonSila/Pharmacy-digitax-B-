@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PharmaCore POS — Tax Compliant (DigiTax / eTIMS)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #receipt-modal, #printable-receipt, #printable-receipt * { visibility: visible; }
+      #printable-receipt {
+        position: absolute; left: 0; top: 0; width: 80mm;
+        margin: 0; padding: 5px; font-family: monospace; font-size: 11px;
+      }
+      .no-print { display: none !important; }
+    }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 h-screen flex flex-col font-sans select-none overflow-hidden">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-emerald-700 text-white px-6 py-3 flex items-center justify-between shadow-md">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-lg bg-white text-emerald-700 flex items-center justify-center font-black text-xl shadow">
+        <i class="fa-solid fa-mortar-pestle"></i>
+      </div>
+      <div>
+        <h1 class="text-lg font-bold tracking-tight">PharmaCore POS <span class="text-xs bg-emerald-900 text-emerald-200 px-2 py-0.5 rounded-full uppercase ml-1">v1.0 Tax Edition</span></h1>
+        <p class="text-xs text-emerald-200">Moi Avenue Branch, Nairobi | Till: POS-01</p>
+      </div>
+    </div>
+
+    <!-- Live Compliance Status Indicator -->
+    <div class="flex items-center space-x-6 text-sm">
+      <div class="flex items-center space-x-2 bg-emerald-800/80 px-3 py-1.5 rounded-lg border border-emerald-600">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="font-medium text-xs">DigiTax eTIMS: <strong class="text-emerald-200">ONLINE (AUTO-FISCAL)</strong></span>
+      </div>
+
+      <div class="flex items-center space-x-2 text-xs text-emerald-100">
+        <i class="fa-solid fa-user-doctor"></i>
+        <span>Cashier: <strong>Dr. Jane Mwangi</strong></span>
+      </div>
+
+      <div id="live-clock" class="text-xs font-mono bg-emerald-900/60 px-2.5 py-1 rounded border border-emerald-700">--:--:--</div>
+    </div>
+  </header>
+
+  <!-- Main POS Workspace -->
+  <main class="flex-1 flex overflow-hidden">
+
+    <!-- LEFT: Product Search & Shelf Catalog -->
+    <section class="flex-1 flex flex-col p-4 space-y-3 overflow-hidden border-r border-slate-200">
+      
+      <!-- Search & Barcode Input Bar -->
+      <div class="flex items-center space-x-2">
+        <div class="relative flex-1">
+          <i class="fa-solid fa-barcode absolute left-3.5 top-3.5 text-slate-400 text-lg"></i>
+          <input 
+            type="text" 
+            id="search-input" 
+            placeholder="Scan barcode or type medication / brand / SKU... (Press F2 to focus)" 
+            class="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 shadow-sm"
+            autocomplete="off"
+          />
+        </div>
+        <button id="clear-search-btn" class="px-3 py-2.5 bg-slate-200 hover:bg-slate-300 rounded-xl text-xs font-medium text-slate-700">
+          Clear
+        </button>
+      </div>
+
+      <!-- Category Filter Tabs -->
+      <div id="category-bar" class="flex space-x-2 overflow-x-auto pb-1 text-xs">
+        <button class="cat-pill active px-3.5 py-1.5 rounded-lg font-semibold bg-emerald-700 text-white shadow-sm" data-cat="">All Items</button>
+        <button class="cat-pill px-3.5 py-1.5 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border border-slate-200" data-cat="POM">Prescriptions (POM)</button>
+        <button class="cat-pill px-3.5 py-1.5 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border border-slate-200" data-cat="OTC">Over The Counter</button>
+        <button class="cat-pill px-3.5 py-1.5 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border border-slate-200" data-cat="BEAUTY">Cosmetics & Care</button>
+        <button class="cat-pill px-3.5 py-1.5 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border border-slate-200" data-cat="DEVICES">Medical Supplies</button>
+      </div>
+
+      <!-- Products Grid -->
+      <div id="products-grid" class="flex-1 overflow-y-auto custom-scrollbar grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pr-1">
+        <!-- Rendered dynamically via JavaScript -->
+      </div>
+    </section>
+
+    <!-- RIGHT: Cart & Fast Fiscal Checkout -->
+    <section class="w-96 lg:w-[420px] bg-white flex flex-col shadow-xl">
+      
+      <!-- Cart Header & Customer Quick PIN -->
+      <div class="p-4 border-b border-slate-100 bg-slate-50 space-y-2">
+        <div class="flex items-center justify-between">
+          <h2 class="font-bold text-slate-800 flex items-center space-x-2">
+            <i class="fa-solid fa-basket-shopping text-emerald-600"></i>
+            <span>Current Checkout</span>
+            <span id="cart-count-badge" class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+          </h2>
+          <button id="clear-cart-btn" class="text-xs text-rose-600 hover:text-rose-800 font-medium">Empty Cart</button>
+        </div>
+
+        <!-- Customer & Rx Accordion Toggle -->
+        <details class="text-xs bg-white rounded-lg border border-slate-200 p-2.5">
+          <summary class="font-semibold text-slate-700 cursor-pointer flex justify-between items-center">
+            <span><i class="fa-solid fa-address-card mr-1 text-slate-400"></i> Customer & Rx Claims</span>
+            <span class="text-[10px] text-emerald-600">Optional</span>
+          </summary>
+          <div class="space-y-2 mt-2 pt-2 border-t border-slate-100">
+            <div>
+              <label class="block text-[10px] text-slate-500 uppercase font-bold">Buyer KRA PIN (B2B)</label>
+              <input id="input-buyer-pin" type="text" placeholder="e.g. P051234567Z" class="w-full p-1.5 border border-slate-200 rounded text-xs uppercase" />
+            </div>
+            <div>
+              <label class="block text-[10px] text-slate-500 uppercase font-bold">Buyer / Patient Name</label>
+              <input id="input-buyer-name" type="text" placeholder="Walk-in Retail" class="w-full p-1.5 border border-slate-200 rounded text-xs" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[10px] text-slate-500 uppercase font-bold">Rx Reference</label>
+                <input id="input-rx-ref" type="text" placeholder="RX-1004" class="w-full p-1.5 border border-slate-200 rounded text-xs" />
+              </div>
+              <div>
+                <label class="block text-[10px] text-slate-500 uppercase font-bold">Prescriber Dr.</label>
+                <input id="input-doctor-name" type="text" placeholder="Dr. Mwangi" class="w-full p-1.5 border border-slate-200 rounded text-xs" />
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <!-- Cart Line Items -->
+      <div id="cart-items-container" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+        <div id="empty-cart-msg" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 py-12">
+          <i class="fa-solid fa-cart-arrow-down text-4xl text-slate-300"></i>
+          <p class="text-xs">Scan an item or click a product to begin checkout</p>
+        </div>
+      </div>
+
+      <!-- Financial & eTIMS Tax Breakdown Summary -->
+      <div class="p-4 bg-slate-50 border-t border-slate-200 space-y-2 text-xs">
+        <div class="flex justify-between text-slate-600">
+          <span>Subtotal:</span>
+          <span id="summary-subtotal" class="font-semibold text-slate-800">KES 0.00</span>
+        </div>
+
+        <div class="flex justify-between text-slate-500">
+          <span><span class="bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded font-bold mr-1">[E]</span> Exempt Medicines:</span>
+          <span id="summary-exempt">KES 0.00</span>
+        </div>
+
+        <div class="flex justify-between text-slate-500">
+          <span><span class="bg-purple-100 text-purple-800 px-1.5 py-0.2 rounded font-bold mr-1">[A]</span> 16% VAT Amount:</span>
+          <span id="summary-vat">KES 0.00</span>
+        </div>
+
+        <div class="pt-2 border-t border-slate-200 flex justify-between items-baseline">
+          <span class="text-sm font-bold text-slate-800">Total Payable:</span>
+          <span id="summary-total" class="text-2xl font-black text-emerald-700">KES 0.00</span>
+        </div>
+
+        <!-- Checkout Tender Action Buttons -->
+        <div class="pt-2 grid grid-cols-2 gap-2">
+          <button id="pay-cash-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow flex items-center justify-center space-x-2 transition active:scale-95 disabled:opacity-50">
+            <i class="fa-solid fa-money-bill-wave"></i>
+            <span>Cash (F9)</span>
+          </button>
+          
+          <button id="pay-mpesa-btn" class="bg-emerald-800 hover:bg-emerald-900 text-white font-bold py-3 rounded-xl shadow flex items-center justify-center space-x-2 transition active:scale-95 disabled:opacity-50">
+            <i class="fa-solid fa-mobile-screen-button"></i>
+            <span>M-Pesa (F10)</span>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Thermal Receipt & QR Code Modal -->
+  <div id="receipt-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Modal Header -->
+      <div class="px-5 py-3.5 bg-emerald-700 text-white flex items-center justify-between no-print">
+        <h3 class="font-bold flex items-center space-x-2">
+          <i class="fa-solid fa-circle-check text-emerald-300"></i>
+          <span>Sale Fiscalized & Completed!</span>
+        </h3>
+        <button id="close-modal-btn" class="text-emerald-200 hover:text-white text-lg">&times;</button>
+      </div>
+
+      <!-- Printable 80mm Receipt Content -->
+      <div id="printable-receipt" class="p-6 overflow-y-auto custom-scrollbar flex-1 font-mono text-xs text-slate-800 bg-white">
+        <pre id="receipt-text" class="whitespace-pre-wrap leading-tight"></pre>
+        
+        <!-- Rendered Real KRA QR Code Image -->
+        <div class="text-center pt-3 pb-2 flex flex-col items-center justify-center">
+          <img id="modal-qr-image" src="" alt="KRA eTIMS Verification QR" class="w-36 h-36 border border-slate-300 rounded p-1 shadow-sm" />
+          <p class="text-[10px] text-slate-500 mt-1 uppercase font-semibold">Scannable KRA eTIMS Verification</p>
+        </div>
+      </div>
+
+      <!-- Modal Action Buttons -->
+      <div class="p-4 bg-slate-50 border-t border-slate-200 flex space-x-3 no-print">
+        <button id="print-receipt-btn" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl shadow flex items-center justify-center space-x-2">
+          <i class="fa-solid fa-print"></i>
+          <span>Print Receipt (ESC/POS)</span>
+        </button>
+        <button id="new-sale-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl shadow">
+          Next Customer
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Client-Side State & POS Engine Script -->
+  <script>
+    // State
+    let allProducts = [];
+    let cart = [];
+    let currentCategory = "";
+
+    // Elements
+    const searchInput = document.getElementById("search-input");
+    const productsGrid = document.getElementById("products-grid");
+    const cartContainer = document.getElementById("cart-items-container");
+    const cartBadge = document.getElementById("cart-count-badge");
+    const emptyMsg = document.getElementById("empty-cart-msg");
+    const subtotalEl = document.getElementById("summary-subtotal");
+    const exemptEl = document.getElementById("summary-exempt");
+    const vatEl = document.getElementById("summary-vat");
+    const totalEl = document.getElementById("summary-total");
+    const payCashBtn = document.getElementById("pay-cash-btn");
+    const payMpesaBtn = document.getElementById("pay-mpesa-btn");
+    const receiptModal = document.getElementById("receipt-modal");
+    const receiptTextEl = document.getElementById("receipt-text");
+    const modalQrImg = document.getElementById("modal-qr-image");
+
+    // Live Clock
+    setInterval(() => {
+      document.getElementById("live-clock").textContent = new Date().toLocaleTimeString();
+    }, 1000);
+
+    // Load Products on startup
+    async function loadProducts(query = "") {
+      try {
+        const url = query ? `/api/v1/pos/products?q=${encodeURIComponent(query)}` : '/api/v1/pos/products';
+        const res = await fetch(url);
+        allProducts = await res.json();
+        renderProducts();
+      } catch (e) {
+        console.error("Failed to load products", e);
+      }
+    }
+
+    // Render Product Cards
+    function renderProducts() {
+      productsGrid.innerHTML = "";
+      const filtered = allProducts.filter(p => !currentCategory || (p.category && p.category.code === currentCategory));
+
+      if (filtered.length === 0) {
+        productsGrid.innerHTML = `
+          <div class="col-span-full py-12 text-center text-slate-400">
+            <i class="fa-solid fa-magnifying-glass text-3xl mb-2 text-slate-300"></i>
+            <p class="text-xs">No matching pharmaceuticals or products found.</p>
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach(p => {
+        const isExempt = p.taxClassification.classCode === 'EXEMPT';
+        const badgeColor = isExempt ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800';
+        const badgeText = isExempt ? '[E] Exempt 0%' : '[A] 16% VAT';
+
+        const card = document.createElement("div");
+        card.className = "bg-white p-3.5 rounded-xl border border-slate-200 hover:border-emerald-500 hover:shadow-md transition cursor-pointer flex flex-col justify-between";
+        card.innerHTML = `
+          <div>
+            <div class="flex items-start justify-between gap-1">
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeColor}">${badgeText}</span>
+              <span class="text-[10px] text-slate-400 font-mono">${p.sku}</span>
+            </div>
+            <h3 class="font-bold text-slate-800 text-sm mt-1.5 leading-snug">${p.brandName}</h3>
+            <p class="text-[11px] text-slate-500 italic">${p.genericName || ''}</p>
+          </div>
+          <div class="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+            <span class="text-sm font-black text-emerald-700">KES ${p.sellingPrice.toFixed(2)}</span>
+            <button class="bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white px-2.5 py-1 rounded-lg text-xs font-bold transition">
+              + Add
+            </button>
+          </div>
+        `;
+        card.addEventListener("click", () => addToCart(p));
+        productsGrid.appendChild(card);
+      });
+    }
+
+    // Add to Cart
+    function addToCart(product) {
+      const existing = cart.find(item => item.product.productId === product.productId);
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        cart.push({
+          product: product,
+          unitId: product.baseUnit.unitId,
+          quantity: 1,
+          unitPrice: product.sellingPrice
+        });
+      }
+      renderCart();
+    }
+
+    // Render Cart & Compute Live Taxes
+    function renderCart() {
+      cartContainer.innerHTML = "";
+      if (cart.length === 0) {
+        cartContainer.appendChild(emptyMsg);
+        payCashBtn.disabled = true;
+        payMpesaBtn.disabled = true;
+        subtotalEl.textContent = "KES 0.00";
+        exemptEl.textContent = "KES 0.00";
+        vatEl.textContent = "KES 0.00";
+        totalEl.textContent = "KES 0.00";
+        cartBadge.textContent = "0";
+        return;
+      }
+
+      payCashBtn.disabled = false;
+      payMpesaBtn.disabled = false;
+
+      let subtotal = 0;
+      let exemptTotal = 0;
+      let vatTotal = 0;
+      let totalQty = 0;
+
+      cart.forEach((item, index) => {
+        const itemGross = item.unitPrice * item.quantity;
+        subtotal += itemGross;
+        totalQty += item.quantity;
+
+        const isExempt = item.product.taxClassification.classCode === 'EXEMPT';
+        if (isExempt) {
+          exemptTotal += itemGross;
+        } else if (item.product.taxClassification.classCode === 'VAT_16') {
+          const net = itemGross / 1.16;
+          vatTotal += (itemGross - net);
+        }
+
+        const row = document.createElement("div");
+        row.className = "bg-slate-50 p-2.5 rounded-xl border border-slate-200 flex items-center justify-between text-xs";
+        row.innerHTML = `
+          <div class="flex-1 mr-2">
+            <div class="font-bold text-slate-800 leading-snug">${item.product.brandName}</div>
+            <div class="text-[11px] text-slate-500">KES ${item.unitPrice.toFixed(2)} / unit</div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <div class="flex items-center border border-slate-300 rounded-lg bg-white overflow-hidden">
+              <button class="px-2 py-0.5 hover:bg-slate-100 font-bold" onclick="updateQty(${index}, -1)">-</button>
+              <span class="px-2 font-bold">${item.quantity}</span>
+              <button class="px-2 py-0.5 hover:bg-slate-100 font-bold" onclick="updateQty(${index}, 1)">+</button>
+            </div>
+            <span class="font-bold text-slate-800 w-16 text-right">KES ${itemGross.toFixed(2)}</span>
+            <button class="text-rose-500 hover:text-rose-700 ml-1" onclick="removeItem(${index})">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        `;
+        cartContainer.appendChild(row);
+      });
+
+      cartBadge.textContent = totalQty;
+      subtotalEl.textContent = `KES ${subtotal.toFixed(2)}`;
+      exemptEl.textContent = `KES ${exemptTotal.toFixed(2)}`;
+      vatEl.textContent = `KES ${vatTotal.toFixed(2)}`;
+      totalEl.textContent = `KES ${subtotal.toFixed(2)}`;
+    }
+
+    window.updateQty = (index, delta) => {
+      cart[index].quantity += delta;
+      if (cart[index].quantity <= 0) cart.splice(index, 1);
+      renderCart();
+    };
+
+    window.removeItem = (index) => {
+      cart.splice(index, 1);
+      renderCart();
+    };
+
+    // Fast Checkout Execution
+    async function processCheckout(method) {
+      if (cart.length === 0) return;
+
+      const buyerPin = document.getElementById("input-buyer-pin").value.trim();
+      const buyerName = document.getElementById("input-buyer-name").value.trim() || "Walk-in Retail";
+      const rxRef = document.getElementById("input-rx-ref").value.trim();
+      const doctorName = document.getElementById("input-doctor-name").value.trim();
+
+      const payload = {
+        cashierId: 1,
+        buyerPin: buyerPin || null,
+        buyerName: buyerName,
+        prescriptionReference: rxRef || null,
+        doctorName: doctorName || null,
+        paymentMethod: method,
+        paymentReference: method === 'MPESA' ? 'MPESA-' + Math.random().toString(36).substring(2, 9).toUpperCase() : 'CASH',
+        items: cart.map(i => ({
+          productId: i.product.productId,
+          unitId: i.unitId,
+          quantity: i.quantity
+        }))
+      };
+
+      try {
+        const res = await fetch('/api/v1/pos/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error("Checkout failed");
+        const checkoutResult = await res.json();
+
+        // Show Modal with Thermal Receipt & QR Code
+        receiptTextEl.textContent = checkoutResult.formattedReceipt;
+        modalQrImg.src = `/api/v1/pos/orders/${checkoutResult.orderId}/qr-image?size=250`;
+        receiptModal.classList.remove("hidden");
+
+        // Clear cart for next customer
+        cart = [];
+        renderCart();
+      } catch (err) {
+        alert("Transaction error: " + err.message);
+      }
+    }
+
+    // Event Listeners
+    payCashBtn.addEventListener("click", () => processCheckout("CASH"));
+    payMpesaBtn.addEventListener("click", () => processCheckout("MPESA"));
+    document.getElementById("clear-cart-btn").addEventListener("click", () => { cart = []; renderCart(); });
+    document.getElementById("close-modal-btn").addEventListener("click", () => receiptModal.classList.add("hidden"));
+    document.getElementById("new-sale-btn").addEventListener("click", () => receiptModal.classList.add("hidden"));
+    document.getElementById("print-receipt-btn").addEventListener("click", () => window.print());
+
+    // Search events
+    searchInput.addEventListener("input", (e) => loadProducts(e.target.value));
+    document.getElementById("clear-search-btn").addEventListener("click", () => { searchInput.value = ""; loadProducts(""); });
+
+    // Category pills
+    document.querySelectorAll(".cat-pill").forEach(pill => {
+      pill.addEventListener("click", () => {
+        document.querySelectorAll(".cat-pill").forEach(p => p.classList.remove("active", "bg-emerald-700", "text-white"));
+        pill.classList.add("active", "bg-emerald-700", "text-white");
+        currentCategory = pill.getAttribute("data-cat");
+        renderProducts();
+      });
+    });
+
+    // Keyboard Shortcuts (F2: Search focus, F9: Cash, F10: M-Pesa, Esc: Close)
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "F2") { e.preventDefault(); searchInput.focus(); searchInput.select(); }
+      if (e.key === "F9") { e.preventDefault(); processCheckout("CASH"); }
+      if (e.key === "F10") { e.preventDefault(); processCheckout("MPESA"); }
+      if (e.key === "Escape") { receiptModal.classList.add("hidden"); }
+    });
+
+    // Initial Load
+    loadProducts();
+  </script>
+</body>
+</html>
