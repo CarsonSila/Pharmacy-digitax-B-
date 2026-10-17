@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  pharmacore-db:
+    image: mysql:8.0
+    container_name: pharmacore-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: Carsonsila@34
+      MYSQL_DATABASE: pharmacore_db
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/setup_pharmacore_db.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./db/seed_pharmacore_data.sql:/docker-entrypoint-initdb.d/02_seed.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
+
+  pharmacore-pos:
+    build: .
+    container_name: pharmacore-pos-app
+    restart: always
+    depends_on:
+      pharmacore-db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://pharmacore-db:3306/pharmacore_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: Carsonsila@34
+      DIGITAX_MOCK_MODE: "true"
+      MPESA_MOCK_MODE: "true"
+
+volumes:
+  mysql_data:
