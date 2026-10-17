@@ -35,3 +35,4 @@ ENV DIGITAX_MOCK_MODE=true
 ENV MPESA_MOCK_MODE=true
 
 ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]
+
