@@ -492,6 +492,9 @@
         </div>
       </div>
 
+      <!-- Role Permissions Matrix (rendered dynamically by renderRolePermissionsMatrix()) -->
+      <div id="role-permissions-matrix" class="p-3 sm:p-4 flex-shrink-0"></div>
+
       <!-- Staff Table -->
       <div class="flex-1 overflow-auto p-3 sm:p-4 custom-scrollbar">
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -1002,6 +1005,13 @@
   <!-- ========================================================================= -->
   <!-- PHARMACORE CORE CLIENT JAVASCRIPT LOGIC -->
   <!-- ========================================================================= -->
+  <!-- Access Denied Toast Notification -->
+  <div id="access-denied-toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 translate-y-24 opacity-0 transition-all duration-300 z-[100] pointer-events-none">
+    <div class="bg-slate-900 text-white text-xs font-medium px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 max-w-xs text-center border border-rose-500/40">
+      <i class="fa-solid fa-shield-halved text-rose-400 text-sm flex-shrink-0"></i>
+      <span id="access-denied-msg">Access restricted for your role.</span>
+    </div>
+  </div>
   <script>
     // --- Application State ---
     let currentUser = {
@@ -1010,6 +1020,111 @@
       fullName: 'Carson Sila',
       role: 'ROLE_ADMIN'
     };
+
+    // =========================================================================
+    // ROLE HELPER FUNCTIONS
+    // =========================================================================
+    function isManager() {
+      return currentUser.role && (currentUser.role.includes('ADMIN') || currentUser.role.includes('MANAGER'));
+    }
+    function isPharmacist() {
+      return currentUser.role && currentUser.role.includes('PHARMACIST');
+    }
+    function isCashier() {
+      return currentUser.role && currentUser.role.includes('CASHIER');
+    }
+
+    /**
+     * Master permission enforcement — called every time the active user changes.
+     * Controls which nav tabs are visible and which action buttons are enabled.
+     *
+     * MANAGER  : Full access to all 6 modules + all action buttons
+     * PHARMACIST: POS + Inventory (view) + Stock Taking (counts only) + Suppliers (receive invoices) + Reports (view)
+     * CASHIER  : POS checkout only — all other tabs hidden
+     */
+    function applyRolePermissions() {
+      const manager     = isManager();
+      const pharmacist  = isPharmacist();
+      const cashier     = isCashier();
+
+      // --- 1. Navigation Tabs ---
+      // Inventory: Manager ✅ Pharmacist ✅ (view only)  Cashier ❌
+      document.getElementById('nav-tab-inventory').style.display = (manager || pharmacist) ? '' : 'none';
+
+      // Stock Taking: Manager ✅  Pharmacist ✅  Cashier ❌
+      document.getElementById('nav-tab-stocktake').style.display = (manager || pharmacist) ? '' : 'none';
+
+      // Suppliers & Invoices: Manager ✅  Pharmacist ✅  Cashier ❌
+      document.getElementById('nav-tab-suppliers').style.display = (manager || pharmacist) ? '' : 'none';
+
+      // Staff & Roles: Manager ✅ ONLY
+      document.getElementById('nav-tab-staff').style.display = manager ? '' : 'none';
+
+      // Reports / Z-Report: Manager ✅  Pharmacist ✅  Cashier ❌
+      document.getElementById('nav-tab-reports').style.display = (manager || pharmacist) ? '' : 'none';
+
+      // --- 2. Inventory Module Action Buttons ---
+      const invAddBtn = document.getElementById('inv-add-product-btn');
+      if (invAddBtn) {
+        if (manager) {
+          invAddBtn.disabled = false;
+          invAddBtn.title = '';
+          invAddBtn.classList.remove('opacity-40', 'cursor-not-allowed');
+        } else {
+          invAddBtn.disabled = true;
+          invAddBtn.title = 'Only Managers can add new medicines';
+          invAddBtn.classList.add('opacity-40', 'cursor-not-allowed');
+        }
+      }
+
+      // Price Edit buttons (rendered dynamically — flag is read in loadInventoryTable)
+      // They are rendered with disabled state based on manager check at render time.
+
+      // --- 3. Stock Take Action Buttons ---
+      const btnReconcile = document.getElementById('btn-reconcile-stocktake');
+      if (btnReconcile) {
+        if (manager) {
+          btnReconcile.classList.remove('opacity-40', 'cursor-not-allowed', 'hidden');
+          btnReconcile.title = 'Reconcile stock after counting (Manager only)';
+        } else {
+          btnReconcile.classList.add('opacity-40', 'cursor-not-allowed');
+          btnReconcile.title = 'Manager authorization required to reconcile';
+          // Pharmacists can see but not use; cashiers never reach this tab
+        }
+      }
+
+      // --- 4. Suppliers Module Action Buttons ---
+      const btnAddSupplier = document.getElementById('btn-add-supplier-modal');
+      if (btnAddSupplier) {
+        if (manager) {
+          btnAddSupplier.disabled = false;
+          btnAddSupplier.classList.remove('opacity-40', 'cursor-not-allowed');
+          btnAddSupplier.title = '';
+        } else {
+          btnAddSupplier.disabled = true;
+          btnAddSupplier.classList.add('opacity-40', 'cursor-not-allowed');
+          btnAddSupplier.title = 'Only Managers can register new suppliers';
+        }
+      }
+
+      // --- 5. Staff Registration Button ---
+      const btnAddStaff = document.getElementById('btn-add-staff-modal');
+      if (btnAddStaff) {
+        if (manager) {
+          btnAddStaff.disabled = false;
+          btnAddStaff.classList.remove('opacity-40', 'cursor-not-allowed');
+        } else {
+          btnAddStaff.disabled = true;
+          btnAddStaff.classList.add('opacity-40', 'cursor-not-allowed');
+        }
+      }
+
+      // --- 6. If cashier navigated to a restricted tab, redirect to POS ---
+      const currentActiveTab = document.querySelector('.module-view:not(.hidden)');
+      if (cashier && currentActiveTab && currentActiveTab.id !== 'view-pos') {
+        switchModuleTab('pos');
+      }
+    }
 
     let allProducts = [];
     let cart = [];
@@ -1051,6 +1166,18 @@
     });
 
     function switchModuleTab(tabName) {
+      // Permission gate — redirect restricted users back to POS
+      const restricted = {
+        inventory: () => isManager() || isPharmacist(),
+        stocktake:  () => isManager() || isPharmacist(),
+        suppliers:  () => isManager() || isPharmacist(),
+        staff:      () => isManager(),
+        reports:    () => isManager() || isPharmacist(),
+      };
+      if (restricted[tabName] && !restricted[tabName]()) {
+        showAccessDenied(tabName);
+        return;
+      }
       document.querySelectorAll(".module-tab-btn").forEach(b => {
         b.classList.remove("bg-emerald-600", "text-white", "shadow-sm");
         b.classList.add("text-slate-600", "hover:bg-slate-100");
@@ -1421,6 +1548,7 @@
     async function loadInventoryTable() {
       const tbody = document.getElementById("inventory-table-body");
       tbody.innerHTML = '<tr><td colspan="9" class="p-6 text-center text-slate-400">Loading catalog...</td></tr>';
+      const manager = isManager();
       
       try {
         const res = await fetch("/api/v1/pos/products");
@@ -1448,10 +1576,12 @@
             <td class="p-3 text-center font-bold ${margin > 20 ? 'text-emerald-600' : 'text-amber-600'}">${margin}%</td>
             <td class="p-3 text-center font-bold text-slate-800">Available</td>
             <td class="p-3 text-center">
+              ${manager ? `
               <button class="btn-edit-price bg-slate-100 hover:bg-emerald-600 hover:text-white text-slate-700 px-2.5 py-1 rounded text-xs font-bold transition"
                       data-id="${p.productId}" data-name="${p.brandName}" data-cost="${cost}" data-sell="${sell}">
                 <i class="fa-solid fa-pen-to-square"></i> Price
-              </button>
+              </button>` : `
+              <span class="text-[10px] text-slate-400 italic flex items-center gap-1"><i class="fa-solid fa-lock text-slate-300"></i> Manager only</span>`}
             </td>
           `;
           tbody.appendChild(tr);
@@ -1481,6 +1611,10 @@
 
     document.getElementById("form-edit-price").addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (!isManager()) {
+        alert('Only Managers can edit selling prices. Please switch to a Manager account.');
+        return;
+      }
       const productId = document.getElementById("edit-price-product-id").value;
       const sellingPrice = parseFloat(document.getElementById("edit-price-selling").value);
       const costPrice = parseFloat(document.getElementById("edit-price-cost").value);
@@ -1660,6 +1794,11 @@
 
     document.getElementById("btn-reconcile-stocktake").addEventListener("click", async () => {
       if (!activeStockTakeSession) return;
+      if (!isManager()) {
+        showAccessDenied('stocktake');
+        alert('Stock take reconciliation requires Manager authorization. Please ask the Manager to switch user and reconcile.');
+        return;
+      }
       const pin = prompt("Manager Authorization required. Enter Manager PIN (e.g. 0000):");
       if (!pin) return;
 
@@ -1754,6 +1893,10 @@
 
     document.getElementById("form-add-supplier").addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (!isManager()) {
+        alert('Only Managers can register new suppliers.');
+        return;
+      }
       const payload = {
         name: document.getElementById("sup-name").value.trim(),
         contactPerson: document.getElementById("sup-contact").value.trim(),
@@ -1909,8 +2052,11 @@
     // --- VIEW 5: STAFF & ROLES ---
     async function loadStaffView() {
       const tbody = document.getElementById("staff-table-body");
-      tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-400">Loading staff directory...</td></tr>';
-      
+      tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-slate-400">Loading staff directory...</td></tr>';
+
+      // Render role permissions summary card
+      renderRolePermissionsMatrix();
+
       try {
         const res = await fetch("/api/v1/users");
         const users = await res.json();
@@ -1918,33 +2064,60 @@
 
         users.forEach(u => {
           let roleBadge = "bg-slate-100 text-slate-800";
-          let roleDesc = "Cashier (Sales Counter Only)";
+          let roleIcon  = "fa-user";
+          let roleDesc  = "POS checkout, cash & M-Pesa tendering, print KRA receipts";
+
           if (u.role.includes("ADMIN") || u.role.includes("MANAGER")) {
             roleBadge = "bg-purple-100 text-purple-800";
-            roleDesc = "Manager (Full Access, Pricing & Reconciliations)";
+            roleIcon  = "fa-user-shield";
+            roleDesc  = "Full system access — pricing, staff, stock take reconciliation, reports";
           } else if (u.role.includes("PHARMACIST")) {
             roleBadge = "bg-blue-100 text-blue-800";
-            roleDesc = "Pharmacist (Dispensing, Stock Take & Invoices)";
+            roleIcon  = "fa-user-doctor";
+            roleDesc  = "Dispensing, stock counts, receive supplier deliveries, view reports";
           }
 
+          const isCurrentUser = u.userId === currentUser.userId;
+
           const tr = document.createElement("tr");
-          tr.className = "hover:bg-slate-50 transition";
+          tr.className = `hover:bg-slate-50 transition ${isCurrentUser ? 'bg-emerald-50/50 ring-1 ring-inset ring-emerald-200' : ''}`;
           tr.innerHTML = `
-            <td class="p-3 font-mono font-bold text-slate-700">${u.username}</td>
+            <td class="p-3">
+              <div class="flex items-center space-x-2">
+                <div class="w-7 h-7 rounded-lg ${roleBadge.split(' ')[0]} flex items-center justify-center flex-shrink-0">
+                  <i class="fa-solid ${roleIcon} text-[11px] ${roleBadge.split(' ')[1]}"></i>
+                </div>
+                <span class="font-mono font-bold text-slate-700">${u.username}</span>
+                ${isCurrentUser ? '<span class="text-[10px] bg-emerald-600 text-white px-1.5 py-0.5 rounded font-bold">Active</span>' : ''}
+              </div>
+            </td>
             <td class="p-3 font-bold text-slate-800">${u.fullName}</td>
             <td class="p-3">
-              <span class="${roleBadge} px-2 py-0.5 rounded text-[10px] font-bold mr-1.5">${u.role}</span>
-              <span class="text-[10px] text-slate-500">${roleDesc}</span>
+              <div class="flex flex-col gap-0.5">
+                <span class="${roleBadge} px-2 py-0.5 rounded text-[10px] font-bold w-fit">${u.role.replace('ROLE_', '')}</span>
+                <span class="text-[10px] text-slate-500">${roleDesc}</span>
+              </div>
             </td>
-            <td class="p-3 text-slate-600">${u.phone || '-'}</td>
-            <td class="p-3 text-slate-600">${u.email || '-'}</td>
-            <td class="p-3 text-center"><span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold">Active PIN</span></td>
-            <td class="p-3 text-center"><span class="w-2 h-2 inline-block rounded-full bg-emerald-500 mr-1"></span>Active</td>
+            <td class="p-3 text-slate-600 text-xs">${u.phone || '-'}</td>
+            <td class="p-3 text-slate-600 text-xs">${u.email || '-'}</td>
             <td class="p-3 text-center">
-              <button class="btn-switch-user bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 px-2.5 py-1 rounded text-xs font-bold transition"
-                      data-id="${u.userId}" data-username="${u.username}" data-name="${u.fullName}" data-role="${u.role}">
-                Select User
-              </button>
+              ${u.hasPin
+                ? '<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold"><i class="fa-solid fa-key mr-1"></i>PIN Set</span>'
+                : '<span class="bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[10px]">No PIN</span>'}
+            </td>
+            <td class="p-3 text-center">
+              <span class="flex items-center justify-center gap-1 text-[11px] ${u.isActive ? 'text-emerald-600' : 'text-slate-400'}">
+                <span class="w-2 h-2 rounded-full ${u.isActive ? 'bg-emerald-500' : 'bg-slate-300'}"></span>
+                ${u.isActive ? 'Active' : 'Inactive'}
+              </span>
+            </td>
+            <td class="p-3 text-center">
+              ${!isCurrentUser
+                ? `<button class="btn-switch-user bg-slate-100 hover:bg-emerald-600 hover:text-white text-slate-700 px-2.5 py-1 rounded text-xs font-bold transition"
+                           data-id="${u.userId}" data-username="${u.username}" data-name="${u.fullName}" data-role="${u.role}">
+                     <i class="fa-solid fa-arrow-right-from-bracket text-[10px] mr-1"></i>Switch to this user
+                   </button>`
+                : '<span class="text-[10px] text-emerald-600 font-bold">— current user —</span>'}
             </td>
           `;
           tbody.appendChild(tr);
@@ -1953,18 +2126,90 @@
         document.querySelectorAll(".btn-switch-user").forEach(btn => {
           btn.addEventListener("click", () => {
             currentUser = {
-              userId: parseInt(btn.getAttribute("data-id")),
+              userId:   parseInt(btn.getAttribute("data-id")),
               username: btn.getAttribute("data-username"),
               fullName: btn.getAttribute("data-name"),
-              role: btn.getAttribute("data-role")
+              role:     btn.getAttribute("data-role")
             };
             updateUserBadge();
-            alert(`Switched active user to: ${currentUser.fullName} (${currentUser.role})`);
+            // Close modal if open, reload staff view to re-highlight active row
+            loadStaffView();
           });
         });
       } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-rose-500">Failed to load staff.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-rose-500">Failed to load staff directory.</td></tr>';
       }
+    }
+
+    function renderRolePermissionsMatrix() {
+      const container = document.getElementById('role-permissions-matrix');
+      if (!container) return;
+
+      const PERMS = [
+        { feature: 'POS Checkout (Cash & M-Pesa)',         manager: true,  pharmacist: true,  cashier: true  },
+        { feature: 'View Medicine Catalog',                 manager: true,  pharmacist: true,  cashier: true  },
+        { feature: 'Issue KRA eTIMS Receipts',             manager: true,  pharmacist: true,  cashier: true  },
+        { feature: 'Process Returns / Credit Notes',        manager: true,  pharmacist: true,  cashier: false },
+        { feature: 'Inventory — View Medicine Details',     manager: true,  pharmacist: true,  cashier: false },
+        { feature: 'Add New Medicine to System',            manager: true,  pharmacist: false, cashier: false },
+        { feature: 'Edit Selling / Cost Price',             manager: true,  pharmacist: false, cashier: false },
+        { feature: 'Stock Taking — Enter Physical Counts',  manager: true,  pharmacist: true,  cashier: false },
+        { feature: 'Stock Taking — Reconcile (Adjust Qty)', manager: true,  pharmacist: false, cashier: false },
+        { feature: 'Supplier — View Invoices & Deliveries', manager: true,  pharmacist: true,  cashier: false },
+        { feature: 'Supplier — Receive Delivery (New GRN)', manager: true,  pharmacist: true,  cashier: false },
+        { feature: 'Supplier — Register New Supplier',      manager: true,  pharmacist: false, cashier: false },
+        { feature: 'Staff & Roles — View & Manage',         manager: true,  pharmacist: false, cashier: false },
+        { feature: 'Register New Employee',                  manager: true,  pharmacist: false, cashier: false },
+        { feature: 'Reports — Z-Report & Daily Summary',    manager: true,  pharmacist: true,  cashier: false },
+        { feature: 'Reports — Profitability & Margins',     manager: true,  pharmacist: false, cashier: false },
+      ];
+
+      const tick = (v, highlight) => v
+        ? `<span class="${highlight ? 'text-emerald-600' : 'text-emerald-500'} font-bold"><i class="fa-solid fa-circle-check"></i></span>`
+        : `<span class="text-slate-300"><i class="fa-solid fa-circle-xmark"></i></span>`;
+
+      container.innerHTML = `
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-3 bg-slate-800 text-white flex items-center gap-2">
+            <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+            <span class="font-bold text-sm">Role Permissions Matrix — What each role can do</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+                <tr>
+                  <th class="p-3 min-w-[220px]">Feature / Action</th>
+                  <th class="p-3 text-center">
+                    <span class="bg-purple-100 text-purple-800 px-2 py-1 rounded font-bold flex items-center justify-center gap-1">
+                      <i class="fa-solid fa-user-shield"></i> Manager / Admin
+                    </span>
+                  </th>
+                  <th class="p-3 text-center">
+                    <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold flex items-center justify-center gap-1">
+                      <i class="fa-solid fa-user-doctor"></i> Pharmacist
+                    </span>
+                  </th>
+                  <th class="p-3 text-center">
+                    <span class="bg-slate-100 text-slate-700 px-2 py-1 rounded font-bold flex items-center justify-center gap-1">
+                      <i class="fa-solid fa-user"></i> Cashier
+                    </span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                ${PERMS.map((p, i) => `
+                  <tr class="${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'} hover:bg-blue-50/30 transition">
+                    <td class="p-3 font-medium text-slate-700">${p.feature}</td>
+                    <td class="p-3 text-center">${tick(p.manager, true)}</td>
+                    <td class="p-3 text-center">${tick(p.pharmacist)}</td>
+                    <td class="p-3 text-center">${tick(p.cashier)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
     }
 
     document.getElementById("btn-add-staff-modal").addEventListener("click", () => {
@@ -2043,12 +2288,33 @@
     });
 
     function updateUserBadge() {
-      let roleShort = "CASHIER";
-      if (currentUser.role.includes("ADMIN")) roleShort = "MANAGER";
-      if (currentUser.role.includes("PHARMACIST")) roleShort = "PHARMACIST";
+      let roleShort = 'CASHIER';
+      let roleColor = 'text-slate-300';
+      if (isManager())   { roleShort = 'MANAGER';    roleColor = 'text-amber-300'; }
+      if (isPharmacist()) { roleShort = 'PHARMACIST'; roleColor = 'text-sky-300';  }
 
-      document.getElementById("current-user-display").textContent = `${currentUser.fullName} [${roleShort}]`;
-      document.getElementById("current-user-name-mobile").textContent = `${currentUser.fullName.split(' ')[0]} (${roleShort})`;
+      document.getElementById('current-user-display').innerHTML =
+        `${currentUser.fullName} <span class="${roleColor} font-black">[${roleShort}]</span>`;
+      document.getElementById('current-user-name-mobile').textContent =
+        `${currentUser.fullName.split(' ')[0]} (${roleShort})`;
+
+      // Apply permission rules every time the active user changes
+      applyRolePermissions();
+    }
+
+    function showAccessDenied(tabName) {
+      const names = {
+        inventory: 'Inventory & Prices',
+        stocktake:  'Stock Taking',
+        suppliers:  'Suppliers & Invoices',
+        staff:      'Staff & Roles',
+        reports:    'Reports',
+      };
+      const toast = document.getElementById('access-denied-toast');
+      const msg   = document.getElementById('access-denied-msg');
+      msg.textContent = `🔒 "${names[tabName] || tabName}" requires Manager or higher access. Ask your Manager to switch users.`;
+      toast.classList.remove('translate-y-24', 'opacity-0');
+      setTimeout(() => toast.classList.add('translate-y-24', 'opacity-0'), 3000);
     }
 
     // --- VIEW 6: REPORTS & Z-REPORT ---
