@@ -119,6 +119,25 @@ public class InventoryService {
         return savedBatch;
     }
 
+    @Transactional
+    public Product updateProductPrice(Integer productId, com.pharmacore.pos.dto.UpdatePriceRequest req) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + productId));
+
+        if (req.getSellingPrice() != null && req.getSellingPrice().compareTo(java.math.BigDecimal.ZERO) > 0) {
+            java.math.BigDecimal oldPrice = product.getSellingPrice();
+            product.setSellingPrice(req.getSellingPrice());
+            log.info("Manager updated selling price for product '{}' from KES {} to KES {}",
+                    product.getBrandName(), oldPrice, req.getSellingPrice());
+        }
+
+        if (req.getCostPrice() != null && req.getCostPrice().compareTo(java.math.BigDecimal.ZERO) >= 0) {
+            product.setCostPrice(req.getCostPrice());
+        }
+
+        return productRepository.save(product);
+    }
+
     @Transactional(readOnly = true)
     public Map<String, Object> getInventoryMetadata() {
         Map<String, Object> metadata = new HashMap<>();

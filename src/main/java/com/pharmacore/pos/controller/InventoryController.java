@@ -46,5 +46,17 @@ public class InventoryController {
     public ResponseEntity<Map<String, Object>> getMetadata() {
         return ResponseEntity.ok(inventoryService.getInventoryMetadata());
     }
+
+    @PutMapping("/products/{productId}/price")
+    public ResponseEntity<Product> updatePrice(
+            @PathVariable("productId") Integer productId,
+            @RequestBody com.pharmacore.pos.dto.UpdatePriceRequest request
+    ) {
+        if (request.getSellingPrice() == null || request.getSellingPrice().signum() <= 0) {
+            return ResponseEntity.badRequest().build();
+        }
+        Product updated = inventoryService.updateProductPrice(productId, request);
+        return ResponseEntity.ok(updated);
+    }
 }
 

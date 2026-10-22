@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>PharmaCore POS — Tax Compliant (DigiTax / eTIMS)</title>
+  <title>PharmaCore Cloud — Pharmacy Management, POS & eTIMS</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     @media print {
       body * { visibility: hidden; }
-      #receipt-modal, #printable-receipt, #printable-receipt *, #printable-z-report, #printable-z-report * { visibility: visible; }
-      #printable-receipt, #printable-z-report {
+      #receipt-modal, #printable-receipt, #printable-receipt *, #printable-z-report, #printable-z-report *, #printable-stocktake, #printable-stocktake * { visibility: visible; }
+      #printable-receipt, #printable-z-report, #printable-stocktake {
         position: absolute; left: 0; top: 0; width: 80mm;
         margin: 0; padding: 5px; font-family: monospace; font-size: 11px;
       }
@@ -18,582 +18,1072 @@
     }
     .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    /* Touch device optimizations */
     input, button, select { -webkit-tap-highlight-color: transparent; }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen md:h-screen flex flex-col font-sans select-none overflow-x-hidden md:overflow-hidden">
 
+  <!-- ========================================================================= -->
   <!-- Top Navigation Header -->
-  <header class="bg-emerald-700 text-white px-3 sm:px-6 py-2.5 shadow-md flex-shrink-0">
+  <!-- ========================================================================= -->
+  <header class="bg-emerald-700 text-white px-3 sm:px-5 py-2 shadow-md flex-shrink-0">
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
       
       <!-- Brand & Branch Identity -->
       <div class="flex items-center justify-between">
         <div class="flex items-center space-x-2 sm:space-x-3">
-          <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white text-emerald-700 flex items-center justify-center font-black text-lg sm:text-xl shadow flex-shrink-0">
+          <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-white text-emerald-700 flex items-center justify-center font-black text-lg sm:text-xl shadow flex-shrink-0">
             <i class="fa-solid fa-mortar-pestle"></i>
           </div>
           <div>
-            <h1 class="text-sm sm:text-lg font-bold tracking-tight flex items-center">
-              PharmaCore POS 
-              <span class="text-[9px] sm:text-xs bg-emerald-900 text-emerald-200 px-1.5 py-0.5 rounded-full uppercase ml-1.5 font-bold">Tax Edition</span>
+            <h1 class="text-sm sm:text-base font-bold tracking-tight flex items-center">
+              PharmaCore Cloud
+              <span class="text-[9px] sm:text-xs bg-emerald-900 text-emerald-200 px-1.5 py-0.5 rounded-full uppercase ml-1.5 font-bold">Kenya eTIMS</span>
             </h1>
-            <p class="text-[10px] sm:text-xs text-emerald-200 truncate">Moi Ave Branch, Nairobi | Till: POS-01</p>
+            <p class="text-[10px] sm:text-[11px] text-emerald-200 truncate">Moi Ave Branch, Nairobi | Till: POS-01</p>
           </div>
         </div>
 
-        <!-- Live Clock (Mobile top right) -->
-        <div id="live-clock" class="sm:hidden text-[10px] font-mono bg-emerald-900/60 px-2 py-1 rounded border border-emerald-700">--:--:--</div>
+        <!-- Mobile Staff & Live Clock -->
+        <div class="flex items-center space-x-1.5 sm:hidden">
+          <button id="mobile-user-badge-btn" class="flex items-center space-x-1 bg-emerald-900/80 px-2 py-1 rounded text-[10px] border border-emerald-600 font-bold">
+            <i class="fa-solid fa-user-circle text-emerald-300"></i>
+            <span id="current-user-name-mobile">Carson (Mgr)</span>
+          </button>
+          <div id="live-clock" class="text-[10px] font-mono bg-emerald-900/60 px-1.5 py-1 rounded border border-emerald-700">--:--:--</div>
+        </div>
       </div>
 
-      <!-- Quick Action Buttons (Horizontally scrollable on mobile) -->
-      <div class="flex items-center space-x-1.5 sm:space-x-2 text-xs overflow-x-auto pb-1 sm:pb-0 custom-scrollbar">
+      <!-- Desktop Staff Badge, eTIMS Status & Clock -->
+      <div class="hidden sm:flex items-center space-x-2 text-xs">
         <!-- Live DigiTax Indicator -->
-        <div class="flex items-center space-x-1.5 bg-emerald-800/90 px-2 sm:px-2.5 py-1 rounded-lg border border-emerald-600 whitespace-nowrap flex-shrink-0 text-[10px] sm:text-xs">
+        <div class="flex items-center space-x-1.5 bg-emerald-800/90 px-2.5 py-1 rounded-lg border border-emerald-600 whitespace-nowrap text-[11px]">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span class="font-bold text-emerald-200">eTIMS Online</span>
+          <span class="font-bold text-emerald-200">DigiTax Fiscal Active</span>
         </div>
 
-        <!-- Add Medication Button -->
-        <button id="nav-add-product-btn" class="flex items-center space-x-1 bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-2.5 py-1 rounded-lg whitespace-nowrap flex-shrink-0 shadow-sm text-[11px] sm:text-xs">
-          <i class="fa-solid fa-plus text-[10px]"></i>
-          <span>+ Medicine</span>
-        </button>
-
-        <!-- Inventory Expiry Alert Pill -->
-        <button id="nav-alerts-btn" class="flex items-center space-x-1 bg-amber-500 hover:bg-amber-600 text-amber-950 font-bold px-2 py-1 rounded-lg whitespace-nowrap flex-shrink-0 shadow-sm text-[11px] sm:text-xs">
-          <i class="fa-solid fa-triangle-exclamation text-[10px]"></i>
-          <span>Alerts</span>
-          <span id="nav-alert-badge" class="bg-amber-950 text-white text-[9px] px-1 rounded-full">0</span>
-        </button>
-
-        <!-- Credit Note / Return Button -->
-        <button id="nav-refund-btn" class="flex items-center space-x-1 bg-slate-800 hover:bg-slate-900 text-white font-medium px-2 py-1 rounded-lg whitespace-nowrap flex-shrink-0 shadow-sm text-[11px] sm:text-xs">
-          <i class="fa-solid fa-rotate-left text-[10px]"></i>
-          <span>Returns</span>
-        </button>
-
-        <!-- End of Day Z-Report Button -->
-        <button id="nav-zreport-btn" class="flex items-center space-x-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-2 py-1 rounded-lg whitespace-nowrap flex-shrink-0 shadow-sm text-[11px] sm:text-xs">
-          <i class="fa-solid fa-file-invoice-dollar text-[10px]"></i>
-          <span>Z-Report</span>
+        <!-- Active Staff Switcher Button -->
+        <button id="nav-user-switch-btn" class="flex items-center space-x-1.5 bg-emerald-800 hover:bg-emerald-900 px-2.5 py-1 rounded-lg border border-emerald-600 font-bold transition">
+          <i class="fa-solid fa-user-shield text-amber-300"></i>
+          <span id="current-user-display">Carson Sila [MANAGER]</span>
+          <i class="fa-solid fa-chevron-down text-[10px] text-emerald-300"></i>
         </button>
 
         <!-- Live Clock (Desktop) -->
-        <div id="live-clock-desktop" class="hidden sm:block text-xs font-mono bg-emerald-900/60 px-2 py-1 rounded border border-emerald-700 flex-shrink-0">--:--:--</div>
+        <div id="live-clock-desktop" class="text-xs font-mono bg-emerald-900/60 px-2 py-1 rounded border border-emerald-700">--:--:--</div>
       </div>
     </div>
   </header>
 
-  <!-- Mobile View Switcher Tabs (Visible on mobile only, hidden on tablet/desktop) -->
-  <div class="md:hidden flex bg-white border-b border-slate-200 text-xs font-bold sticky top-0 z-20 shadow-sm">
-    <button id="tab-catalog" class="flex-1 py-2.5 text-center border-b-2 border-emerald-600 text-emerald-700 flex items-center justify-center space-x-1.5 transition">
-      <i class="fa-solid fa-mortar-pestle"></i>
-      <span>Medicines Catalog</span>
-    </button>
-    <button id="tab-cart" class="flex-1 py-2.5 text-center border-b-2 border-transparent text-slate-500 flex items-center justify-center space-x-1.5 transition">
-      <i class="fa-solid fa-basket-shopping"></i>
-      <span>Checkout Cart</span>
-      <span id="mobile-tab-cart-badge" class="bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.2 rounded-full font-bold">0</span>
-    </button>
-  </div>
-
-  <!-- Main POS Workspace (Responsive Flex Container) -->
-  <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
-
-    <!-- LEFT / TAB 1: Product Search & Shelf Catalog -->
-    <section id="section-catalog" class="flex-1 flex flex-col p-3 sm:p-4 space-y-2.5 sm:space-y-3 overflow-y-auto md:overflow-hidden border-r border-slate-200">
+  <!-- ========================================================================= -->
+  <!-- Main PharmaCore Navigation Bar (Desktop & Mobile Tabs) -->
+  <!-- ========================================================================= -->
+  <nav class="bg-white border-b border-slate-200 px-3 sm:px-5 py-1.5 shadow-sm flex items-center justify-between overflow-x-auto custom-scrollbar flex-shrink-0 z-20">
+    <div class="flex items-center space-x-1 sm:space-x-2 text-xs font-bold whitespace-nowrap">
       
-      <!-- Search & Barcode Input Bar -->
-      <div class="flex items-center space-x-2">
-        <div class="relative flex-1">
-          <i class="fa-solid fa-barcode absolute left-3 top-3 text-slate-400 text-base sm:text-lg"></i>
-          <input 
-            type="text" 
-            id="search-input" 
-            placeholder="Scan barcode or search medication / SKU... (F2)" 
-            class="w-full pl-9 sm:pl-11 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-white border border-slate-300 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:border-emerald-600 shadow-sm"
-            autocomplete="off"
-          />
-        </div>
-        <button id="clear-search-btn" class="px-2.5 sm:px-3 py-2 sm:py-2.5 bg-slate-200 hover:bg-slate-300 rounded-xl text-xs font-medium text-slate-700">
-          Clear
+      <!-- Module 1: POS Checkout -->
+      <button id="nav-tab-pos" class="module-tab-btn flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition bg-emerald-600 text-white shadow-sm" data-tab="pos">
+        <i class="fa-solid fa-cash-register"></i>
+        <span>POS Checkout</span>
+      </button>
+
+      <!-- Module 2: Inventory & Pricing -->
+      <button id="nav-tab-inventory" class="module-tab-btn flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition text-slate-600 hover:bg-slate-100" data-tab="inventory">
+        <i class="fa-solid fa-boxes-stacked"></i>
+        <span>Inventory & Prices</span>
+      </button>
+
+      <!-- Module 3: Stock Taking -->
+      <button id="nav-tab-stocktake" class="module-tab-btn flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition text-slate-600 hover:bg-slate-100" data-tab="stocktake">
+        <i class="fa-solid fa-clipboard-check"></i>
+        <span>Stock Taking</span>
+      </button>
+
+      <!-- Module 4: Suppliers & Invoices -->
+      <button id="nav-tab-suppliers" class="module-tab-btn flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition text-slate-600 hover:bg-slate-100" data-tab="suppliers">
+        <i class="fa-solid fa-truck-ramp-box"></i>
+        <span>Suppliers & Invoices</span>
+      </button>
+
+      <!-- Module 5: Staff & Roles -->
+      <button id="nav-tab-staff" class="module-tab-btn flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition text-slate-600 hover:bg-slate-100" data-tab="staff">
+        <i class="fa-solid fa-users-gear"></i>
+        <span>Staff & Roles</span>
+      </button>
+
+      <!-- Module 6: Reports & Z-Report -->
+      <button id="nav-tab-reports" class="module-tab-btn flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition text-slate-600 hover:bg-slate-100" data-tab="reports">
+        <i class="fa-solid fa-chart-line"></i>
+        <span>Reports</span>
+      </button>
+    </div>
+
+    <!-- Quick Alerts Badge in Nav -->
+    <div class="flex items-center space-x-2 pl-3">
+      <button id="nav-alerts-pill" class="flex items-center space-x-1 bg-amber-100 hover:bg-amber-200 text-amber-900 font-bold px-2 py-1 rounded-lg text-xs transition">
+        <i class="fa-solid fa-triangle-exclamation text-amber-600 text-[10px]"></i>
+        <span>Alerts</span>
+        <span id="nav-alert-badge" class="bg-amber-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">0</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ========================================================================= -->
+  <!-- MAIN CONTENT CONTAINER (Switchable Views) -->
+  <!-- ========================================================================= -->
+  <main class="flex-1 overflow-hidden relative">
+
+    <!-- ======================================================================= -->
+    <!-- VIEW 1: POS CHECKOUT (Counter Terminal) -->
+    <!-- ======================================================================= -->
+    <div id="view-pos" class="module-view h-full flex flex-col md:flex-row overflow-hidden">
+      
+      <!-- Mobile Sub-tabs (Catalog vs Cart) -->
+      <div class="md:hidden flex bg-white border-b border-slate-200 text-xs font-bold sticky top-0 z-10 shadow-sm flex-shrink-0">
+        <button id="tab-catalog" class="flex-1 py-2 text-center border-b-2 border-emerald-600 text-emerald-700 flex items-center justify-center space-x-1.5 transition">
+          <i class="fa-solid fa-mortar-pestle"></i>
+          <span>Medicines</span>
+        </button>
+        <button id="tab-cart" class="flex-1 py-2 text-center border-b-2 border-transparent text-slate-500 flex items-center justify-center space-x-1.5 transition">
+          <i class="fa-solid fa-basket-shopping"></i>
+          <span>Cart</span>
+          <span id="mobile-tab-cart-badge" class="bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.2 rounded-full font-bold">0</span>
         </button>
       </div>
 
-      <!-- Category Filter Tabs -->
-      <div id="category-bar" class="flex space-x-1.5 sm:space-x-2 overflow-x-auto pb-1 text-[11px] sm:text-xs flex-shrink-0 custom-scrollbar">
-        <button class="cat-pill active px-3 py-1.5 rounded-lg font-semibold bg-emerald-700 text-white shadow-sm whitespace-nowrap" data-cat="">All Items</button>
-        <button class="cat-pill px-3 py-1.5 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 whitespace-nowrap" data-cat="POM">Prescriptions (POM)</button>
-        <button class="cat-pill px-3 py-1.5 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 whitespace-nowrap" data-cat="OTC">Over The Counter</button>
-        <button class="cat-pill px-3 py-1.5 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 whitespace-nowrap" data-cat="BEAUTY">Cosmetics & Care</button>
-        <button class="cat-pill px-3 py-1.5 rounded-lg font-medium bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 whitespace-nowrap" data-cat="DEVICES">Medical Supplies</button>
-      </div>
-
-      <!-- Products Grid (1 col on mobile, 2 on tablet, 3 on desktop) -->
-      <div id="products-grid" class="flex-1 overflow-y-auto custom-scrollbar grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 pb-20 md:pb-0">
-        <!-- Rendered dynamically via JavaScript -->
-      </div>
-    </section>
-
-    <!-- RIGHT / TAB 2: Cart & Fast Fiscal Checkout -->
-    <section id="section-cart" class="hidden md:flex w-full md:w-96 lg:w-[430px] bg-white flex-col shadow-xl flex-shrink-0 border-l border-slate-200">
-      
-      <!-- Cart Header & Customer Quick PIN -->
-      <div class="p-3 sm:p-4 border-b border-slate-100 bg-slate-50 space-y-2">
-        <div class="flex items-center justify-between">
-          <h2 class="font-bold text-slate-800 flex items-center space-x-2 text-xs sm:text-sm">
-            <i class="fa-solid fa-basket-shopping text-emerald-600"></i>
-            <span>Current Checkout</span>
-            <span id="cart-count-badge" class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
-          </h2>
-          <button id="clear-cart-btn" class="text-xs text-rose-600 hover:text-rose-800 font-medium">Empty Cart</button>
+      <!-- LEFT: Medicine Search & Product Catalog -->
+      <section id="section-catalog" class="flex-1 flex flex-col bg-slate-50 border-r border-slate-200 overflow-hidden">
+        
+        <!-- Search & Filter Bar -->
+        <div class="p-2.5 sm:p-3 bg-white border-b border-slate-200 flex flex-col gap-2 flex-shrink-0">
+          <div class="relative">
+            <i class="fa-solid fa-barcode absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="text" id="pos-search-input" placeholder="Scan Barcode (F2), SKU, or search medicine name..." 
+                   class="w-full pl-9 pr-4 py-2 bg-slate-100 hover:bg-slate-50 focus:bg-white border border-slate-300 focus:border-emerald-500 rounded-lg text-xs sm:text-sm font-medium focus:outline-none transition">
+          </div>
+          
+          <!-- Category Quick Filters -->
+          <div class="flex items-center space-x-1.5 overflow-x-auto pb-0.5 custom-scrollbar text-[11px] font-semibold">
+            <button class="cat-pill bg-emerald-600 text-white px-2.5 py-1 rounded-full whitespace-nowrap shadow-sm" data-cat="">All Items</button>
+            <button class="cat-pill bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 px-2.5 py-1 rounded-full whitespace-nowrap" data-cat="ANTIBIOTICS">Antibiotics</button>
+            <button class="cat-pill bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 px-2.5 py-1 rounded-full whitespace-nowrap" data-cat="ANALGESICS">Pain Relief</button>
+            <button class="cat-pill bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 px-2.5 py-1 rounded-full whitespace-nowrap" data-cat="CARDIO">Cardiovascular</button>
+            <button class="cat-pill bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 px-2.5 py-1 rounded-full whitespace-nowrap" data-cat="DIABETES">Diabetes</button>
+            <button class="cat-pill bg-white text-slate-600 border border-slate-200 hover:bg-slate-100 px-2.5 py-1 rounded-full whitespace-nowrap" data-cat="VITAMINS">Vitamins/OTC</button>
+          </div>
         </div>
 
-        <!-- Customer & Rx Accordion Toggle -->
-        <details class="text-xs bg-white rounded-lg border border-slate-200 p-2 sm:p-2.5">
-          <summary class="font-semibold text-slate-700 cursor-pointer flex justify-between items-center">
-            <span><i class="fa-solid fa-address-card mr-1 text-slate-400"></i> Customer & Rx Claims</span>
-            <span class="text-[10px] text-emerald-600 font-bold">Optional</span>
-          </summary>
-          <div class="space-y-2 mt-2 pt-2 border-t border-slate-100">
-            <div>
-              <label class="block text-[10px] text-slate-500 uppercase font-bold">Customer Mobile (for M-Pesa push)</label>
-              <input id="input-buyer-phone" type="text" placeholder="0712345678" class="w-full p-1.5 border border-slate-200 rounded text-xs font-mono" />
+        <!-- Products Grid -->
+        <div id="products-grid" class="flex-1 overflow-y-auto p-2.5 sm:p-3 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 content-start custom-scrollbar">
+          <!-- Dynamically populated -->
+        </div>
+
+        <!-- Mobile Floating Cart Bar -->
+        <div id="floating-cart-bar" class="md:hidden fixed bottom-3 left-3 right-3 bg-emerald-700 text-white p-2.5 rounded-xl shadow-xl flex items-center justify-between z-30 transition-transform duration-300 translate-y-full">
+          <div class="flex items-center space-x-2">
+            <div class="w-7 h-7 bg-emerald-800 rounded-lg flex items-center justify-center font-bold text-xs">
+              <span id="floating-cart-count">0</span>
             </div>
             <div>
-              <label class="block text-[10px] text-slate-500 uppercase font-bold">Buyer KRA PIN (B2B Tax Invoice)</label>
-              <input id="input-buyer-pin" type="text" placeholder="e.g. P051234567Z" class="w-full p-1.5 border border-slate-200 rounded text-xs uppercase font-mono" />
-            </div>
-            <div>
-              <label class="block text-[10px] text-slate-500 uppercase font-bold">Buyer / Patient Name</label>
-              <input id="input-buyer-name" type="text" placeholder="Walk-in Retail" class="w-full p-1.5 border border-slate-200 rounded text-xs" />
-            </div>
-            <div class="grid grid-cols-2 gap-2">
-              <div>
-                <label class="block text-[10px] text-slate-500 uppercase font-bold">Rx Reference</label>
-                <input id="input-rx-ref" type="text" placeholder="RX-1004" class="w-full p-1.5 border border-slate-200 rounded text-xs" />
-              </div>
-              <div>
-                <label class="block text-[10px] text-slate-500 uppercase font-bold">Prescriber Dr.</label>
-                <input id="input-doctor-name" type="text" placeholder="Dr. Mwangi" class="w-full p-1.5 border border-slate-200 rounded text-xs" />
-              </div>
+              <p class="text-[10px] text-emerald-200 uppercase font-bold">Current Cart</p>
+              <p id="floating-cart-total" class="text-xs font-black">KES 0.00</p>
             </div>
           </div>
-        </details>
-      </div>
-
-      <!-- Cart Line Items -->
-      <div id="cart-items-container" class="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2 min-h-[160px]">
-        <div id="empty-cart-msg" class="h-full flex flex-col items-center justify-center text-slate-400 space-y-2 py-10">
-          <i class="fa-solid fa-cart-arrow-down text-3xl sm:text-4xl text-slate-300"></i>
-          <p class="text-xs">Scan or tap a medicine to add to cart</p>
-        </div>
-      </div>
-
-      <!-- Financial & eTIMS Tax Breakdown Summary -->
-      <div class="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 space-y-1.5 sm:space-y-2 text-xs flex-shrink-0">
-        <div class="flex justify-between text-slate-600">
-          <span>Subtotal:</span>
-          <span id="summary-subtotal" class="font-semibold text-slate-800">KES 0.00</span>
-        </div>
-
-        <div class="flex justify-between text-slate-500">
-          <span><span class="bg-blue-100 text-blue-800 px-1 py-0.2 rounded font-bold mr-1 text-[10px]">[E]</span> Exempt Medicines:</span>
-          <span id="summary-exempt">KES 0.00</span>
-        </div>
-
-        <div class="flex justify-between text-slate-500">
-          <span><span class="bg-purple-100 text-purple-800 px-1 py-0.2 rounded font-bold mr-1 text-[10px]">[A]</span> 16% VAT Amount:</span>
-          <span id="summary-vat">KES 0.00</span>
-        </div>
-
-        <div class="pt-1.5 border-t border-slate-200 flex justify-between items-baseline">
-          <span class="text-xs sm:text-sm font-bold text-slate-800">Total Payable:</span>
-          <span id="summary-total" class="text-xl sm:text-2xl font-black text-emerald-700">KES 0.00</span>
-        </div>
-
-        <!-- Checkout Tender Action Buttons -->
-        <div class="pt-1.5 grid grid-cols-2 gap-2">
-          <button id="pay-cash-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 sm:py-3 rounded-xl shadow flex items-center justify-center space-x-1.5 transition active:scale-95 disabled:opacity-50 text-xs sm:text-sm">
-            <i class="fa-solid fa-money-bill-wave"></i>
-            <span>Cash (F9)</span>
-          </button>
-          
-          <button id="pay-mpesa-btn" class="bg-emerald-800 hover:bg-emerald-900 text-white font-bold py-2.5 sm:py-3 rounded-xl shadow flex items-center justify-center space-x-1.5 transition active:scale-95 disabled:opacity-50 text-xs sm:text-sm">
-            <i class="fa-solid fa-mobile-screen-button"></i>
-            <span>M-Pesa (F10)</span>
+          <button id="floating-view-cart-btn" class="bg-white text-emerald-800 px-3 py-1.5 rounded-lg text-xs font-black shadow flex items-center space-x-1">
+            <span>Checkout</span>
+            <i class="fa-solid fa-arrow-right text-[10px]"></i>
           </button>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- Mobile Floating Bottom Checkout Bar (Appears when items are in cart) -->
-    <div id="mobile-floating-cart-bar" class="md:hidden fixed bottom-0 left-0 right-0 bg-emerald-800 text-white p-3 flex items-center justify-between shadow-2xl z-30 transform translate-y-full transition-transform duration-200">
-      <div class="flex items-center space-x-2">
-        <div class="w-8 h-8 rounded-full bg-emerald-700 flex items-center justify-center text-sm font-bold">
-          <span id="floating-cart-count">0</span>
+      <!-- RIGHT: Checkout Order & Tendering Pane -->
+      <section id="section-cart" class="w-full md:w-[380px] lg:w-[420px] bg-white flex flex-col justify-between border-l border-slate-200 flex-shrink-0 hidden md:flex h-full">
+        
+        <!-- Cart Header -->
+        <div class="p-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-receipt text-emerald-600"></i>
+            <span class="font-bold text-sm">Sale Ticket</span>
+            <span id="cart-badge" class="bg-emerald-100 text-emerald-800 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+          </div>
+          <button id="clear-cart-btn" class="text-xs text-rose-600 hover:text-rose-700 font-semibold flex items-center space-x-1">
+            <i class="fa-solid fa-trash-can text-[11px]"></i>
+            <span>Clear</span>
+          </button>
         </div>
+
+        <!-- Customer & Prescription Info (Optional) -->
+        <div class="p-2.5 bg-slate-50 border-b border-slate-200 text-xs flex flex-col gap-1.5">
+          <div class="flex gap-1.5">
+            <input type="text" id="cust-phone-input" placeholder="Customer Phone (M-Pesa 254...)" 
+                   class="flex-1 px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs focus:outline-none focus:border-emerald-500">
+            <input type="text" id="cust-pin-input" placeholder="KRA PIN (Optional)" 
+                   class="w-32 px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs focus:outline-none focus:border-emerald-500 uppercase">
+          </div>
+        </div>
+
+        <!-- Cart Items List (Scrollable) -->
+        <div id="cart-items-container" class="flex-1 overflow-y-auto p-2.5 space-y-2 custom-scrollbar">
+          <div id="cart-empty-msg" class="h-full flex flex-col items-center justify-center text-slate-400 py-12">
+            <i class="fa-solid fa-basket-shopping text-4xl mb-2 text-slate-200"></i>
+            <p class="text-xs">No medications added yet.</p>
+            <p class="text-[10px] text-slate-400">Scan barcode or tap items from catalog.</p>
+          </div>
+        </div>
+
+        <!-- Tax & Totals Breakdown -->
+        <div class="p-3 bg-slate-50 border-t border-slate-200 text-xs space-y-1.5">
+          <div class="flex justify-between text-slate-600">
+            <span>Subtotal (Net Excl. Tax)</span>
+            <span id="pos-subtotal" class="font-mono font-medium">KES 0.00</span>
+          </div>
+          <div class="flex justify-between text-slate-600">
+            <span class="flex items-center">
+              <span class="w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5"></span>
+              Exempt Medicines (0% VAT)
+            </span>
+            <span id="pos-exempt" class="font-mono font-medium">KES 0.00</span>
+          </div>
+          <div class="flex justify-between text-slate-600">
+            <span class="flex items-center">
+              <span class="w-1.5 h-1.5 rounded-full bg-purple-500 mr-1.5"></span>
+              Standard Taxable (16% VAT)
+            </span>
+            <span id="pos-vat" class="font-mono font-medium text-purple-700">KES 0.00</span>
+          </div>
+          <div class="pt-2 border-t border-slate-200 flex justify-between items-baseline">
+            <span class="font-bold text-sm text-slate-800">Total Payable</span>
+            <span id="pos-total" class="text-lg font-black text-emerald-700 font-mono">KES 0.00</span>
+          </div>
+
+          <!-- Checkout Action Buttons -->
+          <div class="grid grid-cols-2 gap-2 pt-2">
+            <button id="pay-cash-btn" disabled class="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl shadow transition flex items-center justify-center space-x-1.5">
+              <i class="fa-solid fa-money-bill-wave"></i>
+              <span>Cash (F9)</span>
+            </button>
+            <button id="pay-mpesa-btn" disabled class="bg-emerald-800 hover:bg-emerald-900 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl shadow transition flex items-center justify-center space-x-1.5">
+              <i class="fa-solid fa-mobile-screen"></i>
+              <span>M-Pesa (F10)</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- VIEW 2: INVENTORY & PRICE MANAGEMENT -->
+    <!-- ======================================================================= -->
+    <div id="view-inventory" class="module-view h-full flex flex-col bg-slate-50 overflow-hidden hidden">
+      <div class="p-3 sm:p-4 bg-white border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-shrink-0">
         <div>
-          <div class="text-[10px] text-emerald-200 uppercase font-semibold">Total Payable</div>
-          <div id="floating-cart-total" class="text-sm font-black text-white">KES 0.00</div>
+          <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-boxes-stacked text-emerald-600"></i>
+            Inventory & Price Control
+          </h2>
+          <p class="text-xs text-slate-500">Manage drug catalog, adjust selling prices, and monitor active batches</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <input type="text" id="inv-search-input" placeholder="Search inventory..." 
+                 class="px-3 py-1.5 bg-slate-100 border border-slate-300 rounded-lg text-xs focus:outline-none focus:border-emerald-500">
+          <button id="inv-add-product-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow flex items-center space-x-1">
+            <i class="fa-solid fa-plus text-[10px]"></i>
+            <span>+ Add Medicine</span>
+          </button>
         </div>
       </div>
-      <button id="floating-view-cart-btn" class="bg-emerald-500 hover:bg-emerald-400 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-1.5 shadow">
-        <span>Proceed to Pay</span>
-        <i class="fa-solid fa-chevron-right text-[10px]"></i>
-      </button>
+
+      <!-- Inventory Table -->
+      <div class="flex-1 overflow-auto p-3 sm:p-4 custom-scrollbar">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+              <tr>
+                <th class="p-3">SKU / Barcode</th>
+                <th class="p-3">Medicine & Generic</th>
+                <th class="p-3">Category</th>
+                <th class="p-3">Tax Class</th>
+                <th class="p-3 text-right">Cost Price</th>
+                <th class="p-3 text-right">Selling Price</th>
+                <th class="p-3 text-center">Margin</th>
+                <th class="p-3 text-center">In Stock</th>
+                <th class="p-3 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="inventory-table-body" class="divide-y divide-slate-100 font-medium">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- VIEW 3: STOCK TAKING & AUDIT -->
+    <!-- ======================================================================= -->
+    <div id="view-stocktake" class="module-view h-full flex flex-col bg-slate-50 overflow-hidden hidden">
+      <div class="p-3 sm:p-4 bg-white border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-shrink-0">
+        <div>
+          <div class="flex items-center space-x-2">
+            <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-clipboard-check text-indigo-600"></i>
+              Stock Taking & Physical Reconciliation
+            </h2>
+            <span id="stocktake-status-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">No Active Session</span>
+          </div>
+          <p class="text-xs text-slate-500">Perform physical stock counts, detect discrepancies/shrinkage, and reconcile store inventory</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="btn-start-stocktake" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow flex items-center space-x-1">
+            <i class="fa-solid fa-play text-[10px]"></i>
+            <span>Start Stock Take</span>
+          </button>
+          <button id="btn-save-stocktake" disabled class="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow flex items-center space-x-1">
+            <i class="fa-solid fa-floppy-disk text-[10px]"></i>
+            <span>Save Counts</span>
+          </button>
+          <button id="btn-reconcile-stocktake" disabled class="bg-purple-700 hover:bg-purple-800 disabled:bg-slate-300 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow flex items-center space-x-1">
+            <i class="fa-solid fa-scale-balanced text-[10px]"></i>
+            <span>Reconcile (Manager)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Summary KPI Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 sm:p-4 pb-0 flex-shrink-0">
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-[10px] font-bold uppercase text-slate-400">Total Lines</p>
+          <p id="stk-total-lines" class="text-lg font-black text-slate-800">0</p>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-[10px] font-bold uppercase text-slate-400">Exact Matches</p>
+          <p id="stk-matches" class="text-lg font-black text-emerald-600">0</p>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-[10px] font-bold uppercase text-slate-400">Shortage Items</p>
+          <p id="stk-shortages" class="text-lg font-black text-rose-600">0</p>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+          <p class="text-[10px] font-bold uppercase text-slate-400">Variance Value</p>
+          <p id="stk-variance-val" class="text-lg font-black text-slate-800">KES 0.00</p>
+        </div>
+      </div>
+
+      <!-- Stock Take Table -->
+      <div class="flex-1 overflow-auto p-3 sm:p-4 custom-scrollbar">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+              <tr>
+                <th class="p-3">Medicine Name</th>
+                <th class="p-3 text-center">System Qty</th>
+                <th class="p-3 text-center w-28">Physical Count</th>
+                <th class="p-3 text-center">Variance Qty</th>
+                <th class="p-3 text-right">Variance Value</th>
+                <th class="p-3">Discrepancy Reason</th>
+                <th class="p-3">Notes</th>
+              </tr>
+            </thead>
+            <tbody id="stocktake-table-body" class="divide-y divide-slate-100 font-medium">
+              <tr>
+                <td colspan="7" class="p-8 text-center text-slate-400">
+                  <i class="fa-solid fa-clipboard-list text-3xl mb-2 text-slate-300"></i>
+                  <p>No active stock take session. Click "Start Stock Take" above to initiate physical counting.</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- VIEW 4: SUPPLIERS & SUPPLIER INVOICES (Purchasing & Inward GRN) -->
+    <!-- ======================================================================= -->
+    <div id="view-suppliers" class="module-view h-full flex flex-col bg-slate-50 overflow-hidden hidden">
+      <div class="p-3 sm:p-4 bg-white border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-shrink-0">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-truck-ramp-box text-emerald-600"></i>
+            Suppliers & Inward Delivery Invoices (GRN)
+          </h2>
+          <p class="text-xs text-slate-500">Record supplier shipments, receive stock with batch & expiry, and auto-update inventory</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="btn-add-supplier-modal" class="bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold px-3 py-1.5 rounded-lg text-xs shadow-sm flex items-center space-x-1">
+            <i class="fa-solid fa-building text-[10px]"></i>
+            <span>+ New Supplier</span>
+          </button>
+          <button id="btn-receive-invoice-modal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow flex items-center space-x-1">
+            <i class="fa-solid fa-file-circle-plus text-[10px]"></i>
+            <span>+ Receive Stock (Invoice)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Sub Navigation Tabs for Suppliers -->
+      <div class="flex bg-white px-4 border-b border-slate-200 text-xs font-bold gap-4 flex-shrink-0">
+        <button id="subtab-invoices" class="py-2.5 border-b-2 border-emerald-600 text-emerald-700 transition">Supplier Invoices (GRN)</button>
+        <button id="subtab-suppliers" class="py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition">Suppliers Directory</button>
+      </div>
+
+      <!-- Invoices Section -->
+      <div id="suppliers-invoices-pane" class="flex-1 overflow-auto p-3 sm:p-4 custom-scrollbar">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+              <tr>
+                <th class="p-3">Invoice #</th>
+                <th class="p-3">Supplier Name</th>
+                <th class="p-3">Invoice Date</th>
+                <th class="p-3 text-right">Total Amount</th>
+                <th class="p-3 text-center">Status</th>
+                <th class="p-3">Received By</th>
+                <th class="p-3 text-center">Items Count</th>
+              </tr>
+            </thead>
+            <tbody id="invoices-table-body" class="divide-y divide-slate-100 font-medium">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Suppliers Directory Section -->
+      <div id="suppliers-dir-pane" class="flex-1 overflow-auto p-3 sm:p-4 custom-scrollbar hidden">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+              <tr>
+                <th class="p-3">Supplier Name</th>
+                <th class="p-3">Contact Person</th>
+                <th class="p-3">KRA PIN</th>
+                <th class="p-3">Phone</th>
+                <th class="p-3">Email</th>
+                <th class="p-3">Address</th>
+                <th class="p-3 text-center">Payment Terms</th>
+              </tr>
+            </thead>
+            <tbody id="suppliers-dir-table-body" class="divide-y divide-slate-100 font-medium">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- VIEW 5: STAFF & ROLES MANAGEMENT -->
+    <!-- ======================================================================= -->
+    <div id="view-staff" class="module-view h-full flex flex-col bg-slate-50 overflow-hidden hidden">
+      <div class="p-3 sm:p-4 bg-white border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-shrink-0">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-users-gear text-emerald-600"></i>
+            Staff & Role-Based Access Control (RBAC)
+          </h2>
+          <p class="text-xs text-slate-500">Register employees, assign responsibilities (Manager, Pharmacist 1, Pharmacist 2, Cashier), and set POS PINs</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="btn-add-staff-modal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow flex items-center space-x-1">
+            <i class="fa-solid fa-user-plus text-[10px]"></i>
+            <span>+ Register Staff Member</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Staff Table -->
+      <div class="flex-1 overflow-auto p-3 sm:p-4 custom-scrollbar">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+              <tr>
+                <th class="p-3">Username</th>
+                <th class="p-3">Full Name</th>
+                <th class="p-3">Assigned Role & Responsibilities</th>
+                <th class="p-3">Phone</th>
+                <th class="p-3">Email</th>
+                <th class="p-3 text-center">POS PIN Code</th>
+                <th class="p-3 text-center">Status</th>
+                <th class="p-3 text-center">Quick Switch</th>
+              </tr>
+            </thead>
+            <tbody id="staff-table-body" class="divide-y divide-slate-100 font-medium">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- VIEW 6: REPORTS & Z-REPORT -->
+    <!-- ======================================================================= -->
+    <div id="view-reports" class="module-view h-full flex flex-col bg-slate-50 overflow-hidden hidden">
+      <div class="p-3 sm:p-4 bg-white border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i class="fa-solid fa-chart-line text-emerald-600"></i>
+            End-of-Day Z-Report & Fiscal Audit
+          </h2>
+          <p class="text-xs text-slate-500">KRA eTIMS fiscal daily reconciliations, register audits, and batch expiry tracking</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="reports-print-z-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs shadow flex items-center space-x-1">
+            <i class="fa-solid fa-print text-[10px]"></i>
+            <span>Print Z-Report</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-auto p-3 sm:p-4 custom-scrollbar space-y-4">
+        <!-- Z-Report Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <p class="text-xs font-bold text-slate-400 uppercase">Total Net Sales</p>
+            <p id="rep-total-sales" class="text-xl font-black text-emerald-700 mt-1">KES 0.00</p>
+            <p id="rep-order-count" class="text-[11px] text-slate-500 mt-0.5">0 transactions</p>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <p class="text-xs font-bold text-slate-400 uppercase">VAT 16% Tax Collected</p>
+            <p id="rep-tax-collected" class="text-xl font-black text-purple-700 mt-1">KES 0.00</p>
+            <p class="text-[11px] text-slate-500 mt-0.5">eTIMS Synced</p>
+          </div>
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <p class="text-xs font-bold text-slate-400 uppercase">Estimated Gross Profit</p>
+            <p id="rep-gross-profit" class="text-xl font-black text-slate-800 mt-1">KES 0.00</p>
+            <p id="rep-profit-margin" class="text-[11px] text-emerald-600 font-bold mt-0.5">Margin: 0%</p>
+          </div>
+        </div>
+
+        <!-- Near Expiry Alert Table -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-3 bg-amber-50 border-b border-amber-200 flex items-center justify-between">
+            <h3 class="font-bold text-xs text-amber-900 flex items-center gap-1.5">
+              <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+              Near-Expiry Medicines (FEFO Attention Needed)
+            </h3>
+            <span class="text-[11px] text-amber-700 font-semibold">Next 60 Days</span>
+          </div>
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+              <tr>
+                <th class="p-3">Medicine</th>
+                <th class="p-3">Batch Number</th>
+                <th class="p-3">Expiry Date</th>
+                <th class="p-3 text-center">Remaining Stock</th>
+                <th class="p-3">Supplier</th>
+              </tr>
+            </thead>
+            <tbody id="near-expiry-table-body" class="divide-y divide-slate-100">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </main>
 
-  <!-- M-Pesa STK Push Dialog Modal -->
-  <div id="mpesa-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-5 sm:p-6 text-center space-y-3 sm:space-y-4">
-      <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-2xl sm:text-3xl mx-auto shadow-inner">
-        <i class="fa-solid fa-mobile-screen-button"></i>
+  <!-- ========================================================================= -->
+  <!-- MODAL: EDIT SELLING PRICE (Manager Only) -->
+  <!-- ========================================================================= -->
+  <div id="modal-edit-price" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden border border-slate-200">
+      <div class="bg-slate-800 text-white p-4 flex items-center justify-between">
+        <h3 class="font-bold text-sm flex items-center gap-2">
+          <i class="fa-solid fa-tag text-emerald-400"></i>
+          <span>Edit Medicine Selling Price</span>
+        </h3>
+        <button class="close-modal text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <div>
-        <h3 class="font-bold text-base sm:text-lg text-slate-800">Lipa na M-Pesa STK Push</h3>
-        <p class="text-[11px] sm:text-xs text-slate-500 mt-0.5">Prompt customer's phone for PIN authorization</p>
-      </div>
-
-      <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-left space-y-2">
-        <div class="flex justify-between text-xs">
-          <span class="text-slate-500">Amount:</span>
-          <span id="mpesa-modal-amount" class="font-black text-emerald-700 text-sm">KES 0.00</span>
-        </div>
+      <form id="form-edit-price" class="p-4 space-y-3 text-xs">
+        <input type="hidden" id="edit-price-product-id">
         <div>
-          <label class="block text-[10px] text-slate-500 uppercase font-bold mb-1">Customer Phone Number</label>
-          <input id="mpesa-modal-phone" type="tel" placeholder="0712345678" class="w-full p-2 border border-slate-300 rounded-lg text-sm font-mono font-bold" />
+          <label class="block text-slate-500 font-bold mb-1">Medication</label>
+          <p id="edit-price-product-name" class="font-bold text-slate-800 text-sm bg-slate-50 p-2 rounded border border-slate-200"></p>
         </div>
-      </div>
-
-      <!-- Live Waiting State (Initially Hidden) -->
-      <div id="mpesa-waiting-box" class="hidden p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
-        <div class="flex items-center justify-center space-x-2 text-emerald-800 font-bold text-xs">
-          <i class="fa-solid fa-spinner fa-spin text-emerald-600"></i>
-          <span>Awaiting customer PIN entry on phone...</span>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-500 font-bold mb-1">Cost Price (KES)</label>
+            <input type="number" step="0.01" id="edit-price-cost" class="w-full p-2 border border-slate-300 rounded focus:border-emerald-500 font-mono">
+          </div>
+          <div>
+            <label class="block text-slate-500 font-bold mb-1">Selling Price (KES) *</label>
+            <input type="number" step="0.01" required id="edit-price-selling" class="w-full p-2 border border-slate-300 rounded focus:border-emerald-500 font-mono font-bold text-emerald-700">
+          </div>
         </div>
-        <p id="mpesa-waiting-desc" class="text-[11px] text-slate-600 italic">Push sent to handset. Prompt will timeout in 60s.</p>
-      </div>
-
-      <div class="flex space-x-2 pt-1">
-        <button id="cancel-mpesa-btn" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl text-xs">Cancel</button>
-        <button id="send-stk-btn" class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center space-x-1">
-          <i class="fa-solid fa-paper-plane text-xs"></i>
-          <span>Send Push</span>
-        </button>
-      </div>
+        <div id="manager-pin-field" class="pt-2 border-t border-slate-100">
+          <label class="block text-slate-500 font-bold mb-1">Manager Authorization PIN</label>
+          <input type="password" maxlength="4" id="edit-price-pin" placeholder="Enter 4-digit PIN" class="w-full p-2 border border-slate-300 rounded focus:border-emerald-500 text-center tracking-widest font-mono text-sm">
+          <p class="text-[10px] text-slate-400 mt-0.5">Managers (e.g. Carson PIN: 0000) have override permissions.</p>
+        </div>
+        <div class="pt-2 flex justify-end space-x-2">
+          <button type="button" class="close-modal px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded font-bold">Cancel</button>
+          <button type="submit" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold shadow">Save New Price</button>
+        </div>
+      </form>
     </div>
   </div>
 
-  <!-- Thermal Receipt & QR Code Modal -->
-  <div id="receipt-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
-      
-      <!-- Modal Header -->
-      <div class="px-4 py-3 bg-emerald-700 text-white flex items-center justify-between no-print flex-shrink-0">
-        <h3 class="font-bold flex items-center space-x-2 text-xs sm:text-sm">
-          <i class="fa-solid fa-circle-check text-emerald-300"></i>
-          <span>Sale Fiscalized & Completed!</span>
+  <!-- ========================================================================= -->
+  <!-- MODAL: ADD MEDICATION PRODUCT -->
+  <!-- ========================================================================= -->
+  <div id="modal-add-product" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
+      <div class="bg-emerald-700 text-white p-4 flex items-center justify-between sticky top-0 z-10">
+        <h3 class="font-bold text-sm flex items-center gap-2">
+          <i class="fa-solid fa-pills"></i>
+          <span>Add New Medication to System</span>
         </h3>
-        <button id="close-modal-btn" class="text-emerald-200 hover:text-white text-lg p-1">&times;</button>
+        <button class="close-modal text-white/80 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
       </div>
-
-      <!-- Printable 80mm Receipt Content -->
-      <div id="printable-receipt" class="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 font-mono text-xs text-slate-800 bg-white">
-        <pre id="receipt-text" class="whitespace-pre-wrap leading-tight text-[11px] sm:text-xs"></pre>
-        
-        <!-- Rendered Real KRA QR Code Image -->
-        <div class="text-center pt-3 pb-2 flex flex-col items-center justify-center">
-          <img id="modal-qr-image" src="" alt="KRA eTIMS Verification QR" class="w-32 h-32 sm:w-36 sm:h-36 border border-slate-300 rounded p-1 shadow-sm" />
-          <p class="text-[9px] sm:text-[10px] text-slate-500 mt-1 uppercase font-semibold">Scannable KRA eTIMS Verification</p>
-        </div>
-      </div>
-
-      <!-- Modal Action Buttons -->
-      <div class="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 flex space-x-2 sm:space-x-3 no-print flex-shrink-0">
-        <button id="print-receipt-btn" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl shadow flex items-center justify-center space-x-1.5 text-xs">
-          <i class="fa-solid fa-print"></i>
-          <span>Print Receipt</span>
-        </button>
-        <button id="new-sale-btn" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl shadow text-xs">
-          Next Customer
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- End of Day Z-Report Modal -->
-  <div id="zreport-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
-      <div class="px-4 py-3 bg-indigo-700 text-white flex items-center justify-between no-print flex-shrink-0">
-        <h3 class="font-bold flex items-center space-x-2 text-xs sm:text-sm">
-          <i class="fa-solid fa-file-invoice-dollar text-indigo-300"></i>
-          <span>Daily Z-Report & Fiscal Reconciliation</span>
-        </h3>
-        <button id="close-zreport-btn" class="text-indigo-200 hover:text-white text-lg p-1">&times;</button>
-      </div>
-
-      <div id="printable-z-report" class="p-4 sm:p-6 overflow-y-auto custom-scrollbar flex-1 font-mono text-[11px] sm:text-xs text-slate-800 bg-white">
-        <pre id="zreport-text" class="whitespace-pre-wrap leading-tight"></pre>
-      </div>
-
-      <div class="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 flex space-x-2 sm:space-x-3 no-print flex-shrink-0">
-        <button id="print-zreport-btn" class="flex-1 bg-indigo-700 hover:bg-indigo-800 text-white font-bold py-2.5 rounded-xl shadow flex items-center justify-center space-x-2 text-xs">
-          <i class="fa-solid fa-print"></i>
-          <span>Print Z-Report Slip</span>
-        </button>
-        <button id="dismiss-zreport-btn" class="px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2.5 rounded-xl text-xs">
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Stock & Expiry Alerts Modal -->
-  <div id="alerts-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
-      <div class="px-4 py-3 bg-amber-600 text-white flex items-center justify-between flex-shrink-0">
-        <h3 class="font-bold flex items-center space-x-2 text-xs sm:text-sm">
-          <i class="fa-solid fa-triangle-exclamation"></i>
-          <span>Inventory & Batch Expiry Alerts</span>
-        </h3>
-        <button id="close-alerts-btn" class="text-amber-200 hover:text-white text-lg p-1">&times;</button>
-      </div>
-      <div class="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-4 text-xs">
-        <div>
-          <h4 class="font-bold text-rose-700 uppercase mb-1.5 flex items-center space-x-1">
-            <i class="fa-solid fa-ban"></i>
-            <span>Expired Batches (Immediate Quarantine)</span>
-          </h4>
-          <div id="expired-batches-list" class="space-y-1 text-slate-600"></div>
-        </div>
-        <div>
-          <h4 class="font-bold text-amber-700 uppercase mb-1.5 flex items-center space-x-1">
-            <i class="fa-solid fa-clock-rotate-left"></i>
-            <span>Batches Expiring Within 90 Days (FEFO Dispensing Priority)</span>
-          </h4>
-          <div id="expiring-soon-list" class="space-y-1 text-slate-600"></div>
-        </div>
-        <div>
-          <h4 class="font-bold text-blue-700 uppercase mb-1.5 flex items-center space-x-1">
-            <i class="fa-solid fa-boxes-stacked"></i>
-            <span>Low Stock Items (Below Reorder Level)</span>
-          </h4>
-          <div id="low-stock-list" class="space-y-1 text-slate-600"></div>
-        </div>
-      </div>
-      <div class="p-3 bg-slate-50 border-t border-slate-200 text-right flex-shrink-0">
-        <button id="dismiss-alerts-btn" class="px-4 py-2 bg-slate-800 text-white rounded-lg font-bold text-xs">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Credit Note / Return Modal -->
-  <div id="refund-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl p-4 sm:p-5 space-y-3">
-      <div class="flex justify-between items-center border-b border-slate-200 pb-2">
-        <h3 class="font-bold text-slate-800 flex items-center space-x-2 text-xs sm:text-sm">
-          <i class="fa-solid fa-rotate-left text-rose-600"></i>
-          <span>Process Return / Credit Note</span>
-        </h3>
-        <button id="close-refund-btn" class="text-slate-400 hover:text-slate-600 text-lg p-1">&times;</button>
-      </div>
-
-      <div class="space-y-2 text-xs">
-        <div>
-          <label class="block text-slate-600 font-bold mb-1">Order ID</label>
-          <input id="refund-order-id" type="number" placeholder="Enter Order ID (e.g. 1)" class="w-full p-2 border border-slate-300 rounded-lg text-sm" />
-        </div>
-        <div>
-          <label class="block text-slate-600 font-bold mb-1">Return Reason</label>
-          <input id="refund-reason" type="text" placeholder="Damaged package / Customer returned unsealed" class="w-full p-2 border border-slate-300 rounded-lg" />
-        </div>
-        <div class="flex items-center space-x-2 pt-1">
-          <input type="checkbox" id="refund-restock" checked class="w-4 h-4 text-emerald-600 rounded" />
-          <label for="refund-restock" class="text-slate-700">Restock undamaged items back to FEFO batch</label>
-        </div>
-      </div>
-
-      <div id="refund-result-box" class="hidden p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs space-y-1"></div>
-
-      <div class="flex space-x-2 pt-2 border-t border-slate-100">
-        <button id="cancel-refund-btn" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 rounded-lg text-xs">Cancel</button>
-        <button id="submit-refund-btn" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-lg text-xs">
-          Issue Credit Note
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Add Product & Consignment Stock Modal -->
-  <div id="product-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
-    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
-      <div class="px-4 py-3 bg-emerald-700 text-white flex items-center justify-between flex-shrink-0">
-        <h3 class="font-bold flex items-center space-x-2 text-xs sm:text-sm">
-          <i class="fa-solid fa-pills text-emerald-300"></i>
-          <span>Add New Medicine & Initial Stock</span>
-        </h3>
-        <button id="close-product-modal-btn" class="text-emerald-200 hover:text-white text-lg p-1">&times;</button>
-      </div>
-
-      <div class="p-4 sm:p-5 overflow-y-auto custom-scrollbar flex-1 space-y-3 text-xs">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+      <form id="form-add-product" class="p-4 space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-2">
           <div>
-            <label class="block text-slate-600 font-bold mb-1">Brand Name *</label>
-            <input id="new-brand-name" type="text" placeholder="e.g. Augmentin 625mg" class="w-full p-2 border border-slate-300 rounded-lg text-xs sm:text-sm" required />
+            <label class="block font-bold text-slate-600 mb-1">Brand Name *</label>
+            <input type="text" id="prod-brand-name" required placeholder="e.g. Augmentin 625mg" class="w-full p-2 border border-slate-300 rounded">
           </div>
           <div>
-            <label class="block text-slate-600 font-bold mb-1">Generic / Active Ingredient</label>
-            <input id="new-generic-name" type="text" placeholder="e.g. Amoxicillin / Clavulanic" class="w-full p-2 border border-slate-300 rounded-lg text-xs sm:text-sm" />
+            <label class="block font-bold text-slate-600 mb-1">Generic Name</label>
+            <input type="text" id="prod-generic-name" placeholder="e.g. Amoxicillin / Clavulanate" class="w-full p-2 border border-slate-300 rounded">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Category</label>
+            <select id="prod-category" class="w-full p-2 border border-slate-300 rounded bg-white"></select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">KRA Tax Class *</label>
+            <select id="prod-tax-class" class="w-full p-2 border border-slate-300 rounded bg-white"></select>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">SKU Code</label>
+            <input type="text" id="prod-sku" placeholder="Auto-generated" class="w-full p-2 border border-slate-300 rounded">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Barcode</label>
+            <input type="text" id="prod-barcode" placeholder="Scan or enter" class="w-full p-2 border border-slate-300 rounded">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">HS Code</label>
+            <input type="text" id="prod-hscode" value="3004.10.00" class="w-full p-2 border border-slate-300 rounded font-mono">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Buying Cost (KES)</label>
+            <input type="number" step="0.01" id="prod-cost-price" value="0.00" class="w-full p-2 border border-slate-300 rounded font-mono">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Selling Price (KES) *</label>
+            <input type="number" step="0.01" required id="prod-selling-price" placeholder="0.00" class="w-full p-2 border border-slate-300 rounded font-mono font-bold text-emerald-700">
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
-          <div>
-            <label class="block text-slate-600 font-bold mb-1">Barcode / EAN</label>
-            <input id="new-barcode" type="text" placeholder="890123456005" class="w-full p-2 border border-slate-300 rounded-lg font-mono text-xs sm:text-sm" />
-          </div>
-          <div>
-            <label class="block text-slate-600 font-bold mb-1">SKU / Item Code</label>
-            <input id="new-sku" type="text" placeholder="MED-AUG-625" class="w-full p-2 border border-slate-300 rounded-lg font-mono text-xs sm:text-sm" />
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <div>
-            <label class="block text-slate-600 font-bold mb-1">Category</label>
-            <select id="new-category" class="w-full p-2 border border-slate-300 rounded-lg text-xs">
-              <option value="1">Prescriptions (POM)</option>
-              <option value="2">Over The Counter (OTC)</option>
-              <option value="3">Vitamins / Supps</option>
-              <option value="4">Cosmetics & Care</option>
-              <option value="5">Medical Supplies</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-slate-600 font-bold mb-1">Tax Classification *</label>
-            <select id="new-tax-class" class="w-full p-2 border border-slate-300 rounded-lg font-semibold text-xs">
-              <option value="1">[E] Exempt (0% - Medicines)</option>
-              <option value="3">[A] Standard (16% VAT)</option>
-              <option value="2">[B] Zero-Rated (0%)</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-slate-600 font-bold mb-1">Base Unit</label>
-            <select id="new-base-unit" class="w-full p-2 border border-slate-300 rounded-lg text-xs">
-              <option value="1">Tablet/Capsule</option>
-              <option value="2">Blister/Strip</option>
-              <option value="3">Box/Pack</option>
-              <option value="4">Bottle</option>
-              <option value="5">Tube</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2.5 sm:gap-3">
-          <div>
-            <label class="block text-slate-600 font-bold mb-1">Selling Price (KES) *</label>
-            <input id="new-selling-price" type="number" step="0.01" placeholder="150.00" class="w-full p-2 border border-slate-300 rounded-lg font-bold text-emerald-700 text-xs sm:text-sm" required />
-          </div>
-          <div>
-            <label class="block text-slate-600 font-bold mb-1">Cost Price (KES)</label>
-            <input id="new-cost-price" type="number" step="0.01" placeholder="95.00" class="w-full p-2 border border-slate-300 rounded-lg text-xs sm:text-sm" />
-          </div>
-        </div>
-
-        <!-- Initial Consignment Batch Details -->
-        <div class="pt-2 border-t border-slate-200">
-          <span class="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Initial Batch Stock In (FEFO Inventory)</span>
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1.5">
+        <!-- Initial Batch Details -->
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+          <p class="font-bold text-slate-700 text-[11px] uppercase">Initial Batch Details (Stock-In)</p>
+          <div class="grid grid-cols-3 gap-2">
             <div>
-              <label class="block text-slate-500 font-bold mb-0.5">Batch Number</label>
-              <input id="new-batch-no" type="text" placeholder="BAT-AUG-2026" class="w-full p-1.5 border border-slate-300 rounded text-xs font-mono" />
+              <label class="block text-slate-500 text-[10px] mb-0.5">Batch Number</label>
+              <input type="text" id="prod-batch-no" value="BATCH-001" class="w-full p-1.5 border border-slate-300 rounded">
             </div>
             <div>
-              <label class="block text-slate-500 font-bold mb-0.5">Expiry Date</label>
-              <input id="new-expiry-date" type="date" class="w-full p-1.5 border border-slate-300 rounded text-xs" />
+              <label class="block text-slate-500 text-[10px] mb-0.5">Expiry Date</label>
+              <input type="date" id="prod-expiry-date" class="w-full p-1.5 border border-slate-300 rounded">
             </div>
             <div>
-              <label class="block text-slate-500 font-bold mb-0.5">Stock Quantity</label>
-              <input id="new-stock-qty" type="number" placeholder="200" class="w-full p-1.5 border border-slate-300 rounded text-xs font-bold" />
+              <label class="block text-slate-500 text-[10px] mb-0.5">Initial Quantity</label>
+              <input type="number" id="prod-initial-qty" value="100" class="w-full p-1.5 border border-slate-300 rounded">
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="p-3 bg-slate-50 border-t border-slate-200 flex space-x-2 flex-shrink-0">
-        <button id="cancel-product-btn" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 rounded-xl text-xs">Cancel</button>
-        <button id="save-product-btn" class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2 rounded-xl text-xs">
-          Save to Inventory
+        <div class="pt-2 flex justify-end space-x-2">
+          <button type="button" class="close-modal px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded font-bold">Cancel</button>
+          <button type="submit" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold shadow">Save Medication</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: REGISTER STAFF MEMBER -->
+  <!-- ========================================================================= -->
+  <div id="modal-add-staff" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200">
+      <div class="bg-emerald-700 text-white p-4 flex items-center justify-between">
+        <h3 class="font-bold text-sm flex items-center gap-2">
+          <i class="fa-solid fa-user-plus"></i>
+          <span>Register Staff Member</span>
+        </h3>
+        <button class="close-modal text-white/80 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="form-add-staff" class="p-4 space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-slate-600 mb-1">Full Name *</label>
+          <input type="text" id="staff-fullname" required placeholder="e.g. Dr. Jane Wanjiku" class="w-full p-2 border border-slate-300 rounded">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Username *</label>
+            <input type="text" id="staff-username" required placeholder="e.g. jane1" class="w-full p-2 border border-slate-300 rounded">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Assigned Role *</label>
+            <select id="staff-role" class="w-full p-2 border border-slate-300 rounded bg-white font-bold">
+              <option value="ROLE_ADMIN">Manager / Administrator</option>
+              <option value="ROLE_PHARMACIST" selected>Pharmacist (1 or 2)</option>
+              <option value="ROLE_CASHIER">Cashier (Sales Counter)</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Phone Number</label>
+            <input type="text" id="staff-phone" placeholder="0722..." class="w-full p-2 border border-slate-300 rounded">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Email</label>
+            <input type="email" id="staff-email" placeholder="staff@pharmacore.com" class="w-full p-2 border border-slate-300 rounded">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">4-Digit POS PIN *</label>
+            <input type="password" maxlength="4" id="staff-pin" required placeholder="e.g. 1234" class="w-full p-2 border border-slate-300 rounded font-mono text-center tracking-widest text-sm">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Login Password</label>
+            <input type="password" id="staff-password" value="123456" class="w-full p-2 border border-slate-300 rounded">
+          </div>
+        </div>
+        <div class="pt-2 flex justify-end space-x-2">
+          <button type="button" class="close-modal px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded font-bold">Cancel</button>
+          <button type="submit" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold shadow">Save Employee</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: REGISTER SUPPLIER -->
+  <!-- ========================================================================= -->
+  <div id="modal-add-supplier" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200">
+      <div class="bg-slate-800 text-white p-4 flex items-center justify-between">
+        <h3 class="font-bold text-sm flex items-center gap-2">
+          <i class="fa-solid fa-building text-emerald-400"></i>
+          <span>Register Pharmaceutical Supplier</span>
+        </h3>
+        <button class="close-modal text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="form-add-supplier" class="p-4 space-y-3 text-xs">
+        <div>
+          <label class="block font-bold text-slate-600 mb-1">Company / Supplier Name *</label>
+          <input type="text" id="sup-name" required placeholder="e.g. Harleys Ltd" class="w-full p-2 border border-slate-300 rounded">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Contact Person</label>
+            <input type="text" id="sup-contact" placeholder="e.g. Suresh Patel" class="w-full p-2 border border-slate-300 rounded">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">KRA PIN</label>
+            <input type="text" id="sup-pin" placeholder="P05..." class="w-full p-2 border border-slate-300 rounded font-mono uppercase">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Phone</label>
+            <input type="text" id="sup-phone" placeholder="+254..." class="w-full p-2 border border-slate-300 rounded">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Email</label>
+            <input type="email" id="sup-email" placeholder="orders@harleys.co.ke" class="w-full p-2 border border-slate-300 rounded">
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Physical Address</label>
+            <input type="text" id="sup-address" placeholder="Commercial St, Nairobi" class="w-full p-2 border border-slate-300 rounded">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Payment Terms</label>
+            <select id="sup-terms" class="w-full p-2 border border-slate-300 rounded bg-white">
+              <option value="COD">Cash on Delivery (COD)</option>
+              <option value="Net 15">Net 15 Days</option>
+              <option value="Net 30" selected>Net 30 Days</option>
+              <option value="Net 60">Net 60 Days</option>
+            </select>
+          </div>
+        </div>
+        <div class="pt-2 flex justify-end space-x-2">
+          <button type="button" class="close-modal px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded font-bold">Cancel</button>
+          <button type="submit" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold shadow">Save Supplier</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: RECEIVE SUPPLIER INVOICE (GRN Inward Stock) -->
+  <!-- ========================================================================= -->
+  <div id="modal-receive-invoice" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
+      <div class="bg-emerald-700 text-white p-4 flex items-center justify-between sticky top-0 z-10">
+        <h3 class="font-bold text-sm flex items-center gap-2">
+          <i class="fa-solid fa-truck-ramp-box"></i>
+          <span>Receive Delivery & Supplier Invoice (Stock Inward)</span>
+        </h3>
+        <button class="close-modal text-white/80 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="form-receive-invoice" class="p-4 space-y-3 text-xs">
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Supplier *</label>
+            <select id="inv-supplier-select" required class="w-full p-2 border border-slate-300 rounded bg-white font-bold"></select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Supplier Invoice # *</label>
+            <input type="text" id="inv-number" required placeholder="e.g. HAR-2026-991" class="w-full p-2 border border-slate-300 rounded font-mono">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Invoice Date</label>
+            <input type="date" id="inv-date" class="w-full p-2 border border-slate-300 rounded">
+          </div>
+        </div>
+
+        <!-- Line Items -->
+        <div class="pt-2">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="font-bold text-slate-700 uppercase text-[10px]">Delivered Medications & Batches</span>
+            <button type="button" id="btn-add-invoice-line" class="text-emerald-700 hover:text-emerald-800 font-bold flex items-center space-x-1">
+              <i class="fa-solid fa-plus-circle"></i>
+              <span>+ Add Line Item</span>
+            </button>
+          </div>
+          <div id="invoice-lines-container" class="space-y-2">
+            <!-- Dynamic line items -->
+          </div>
+        </div>
+
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+          <span class="font-bold text-slate-700">Total Invoice Amount (KES):</span>
+          <span id="invoice-total-display" class="text-base font-black text-emerald-700 font-mono">KES 0.00</span>
+        </div>
+
+        <div class="pt-2 flex justify-end space-x-2">
+          <button type="button" class="close-modal px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded font-bold">Cancel</button>
+          <button type="submit" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold shadow">Submit & Update Stock</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: QUICK PIN SWITCH / USER LOGIN -->
+  <!-- ========================================================================= -->
+  <div id="modal-pin-switch" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden border border-slate-200">
+      <div class="bg-emerald-700 text-white p-4 flex items-center justify-between">
+        <h3 class="font-bold text-sm flex items-center gap-2">
+          <i class="fa-solid fa-id-badge text-amber-300"></i>
+          <span>Switch Active Staff (POS PIN)</span>
+        </h3>
+        <button class="close-modal text-white/80 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-4 space-y-3 text-xs">
+        <p class="text-slate-500">Enter your 4-digit PIN to switch the active counter user.</p>
+        <div class="flex justify-center">
+          <input type="password" maxlength="4" id="quick-pin-input" placeholder="••••" 
+                 class="w-36 text-center text-2xl font-mono tracking-widest py-2 border-2 border-slate-300 focus:border-emerald-500 rounded-xl focus:outline-none">
+        </div>
+        <div class="grid grid-cols-3 gap-1.5 pt-2">
+          <button class="pin-key bg-slate-100 hover:bg-slate-200 p-3 rounded-lg font-bold text-base">1</button>
+          <button class="pin-key bg-slate-100 hover:bg-slate-200 p-3 rounded-lg font-bold text-base">2</button>
+          <button class="pin-key bg-slate-100 hover:bg-slate-200 p-3 rounded-lg font-bold text-base">3</button>
+          <button class="pin-key bg-slate-100 hover:bg-slate-200 p-3 rounded-lg font-bold text-base">4</button>
+          <button class="pin-key bg-slate-100 hover:bg-slate-200 p-3 rounded-lg font-bold text-base">5</button>
+          <button class="pin-key bg-slate-100 hover:bg-slate-200 p-3 rounded-lg font-bold text-base">6</button>
+          <button class="pin-key bg-slate-100 hover:bg-slate-200 p-3 rounded-lg font-bold text-base">7</button>
+          <button class="pin-key bg-slate-100 hover:bg-slate-200 p-3 rounded-lg font-bold text-base">8</button>
+          <button class="pin-key bg-slate-100 hover:bg-slate-200 p-3 rounded-lg font-bold text-base">9</button>
+          <button class="pin-clear bg-rose-50 hover:bg-rose-100 text-rose-600 p-3 rounded-lg font-bold text-xs">Clear</button>
+          <button class="pin-key bg-slate-100 hover:bg-slate-200 p-3 rounded-lg font-bold text-base">0</button>
+          <button id="btn-submit-pin" class="bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-lg font-bold text-xs shadow">OK</button>
+        </div>
+        <p class="text-[10px] text-slate-400 text-center pt-2">Default PINs: Carson (0000) · Jane (1111) · David (2222) · Faith (3333) · Admin (1234)</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- MODAL: KRA eTIMS RECEIPT (Thermal Format with QR Code) -->
+  <!-- ========================================================================= -->
+  <div id="receipt-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-white rounded-2xl max-w-sm w-full max-h-[90vh] overflow-y-auto shadow-2xl p-4 border border-slate-200">
+      <div id="printable-receipt" class="font-mono text-xs">
+        <div class="text-center pb-2 border-b border-dashed border-slate-300">
+          <h2 class="font-black text-sm uppercase tracking-wide">PHARMACORE PHARMACY</h2>
+          <p class="text-[10px] text-slate-500">Moi Avenue Branch, Nairobi</p>
+          <p class="text-[10px] text-slate-500">KRA PIN: P051234567Z</p>
+          <p class="text-[10px] text-slate-500">Tel: +254 700 123 456</p>
+        </div>
+        <div class="py-2 border-b border-dashed border-slate-300 text-[10px] space-y-0.5">
+          <div class="flex justify-between"><span>Receipt #:</span><span id="rec-number" class="font-bold">--</span></div>
+          <div class="flex justify-between"><span>Date/Time:</span><span id="rec-date">--</span></div>
+          <div class="flex justify-between"><span>Served By:</span><span id="rec-cashier">--</span></div>
+          <div class="flex justify-between"><span>Payment:</span><span id="rec-pay-mode">--</span></div>
+        </div>
+        <div class="py-2 border-b border-dashed border-slate-300">
+          <table class="w-full text-[10px]">
+            <thead>
+              <tr class="border-b border-slate-200 text-left">
+                <th class="pb-1">Item</th>
+                <th class="pb-1 text-center">Qty</th>
+                <th class="pb-1 text-right">Price</th>
+                <th class="pb-1 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody id="rec-items-body"></tbody>
+          </table>
+        </div>
+        <div class="py-2 border-b border-dashed border-slate-300 text-[10px] space-y-1">
+          <div class="flex justify-between"><span>Subtotal (Net):</span><span id="rec-subtotal">KES 0.00</span></div>
+          <div class="flex justify-between"><span>Exempt (0%):</span><span id="rec-exempt">KES 0.00</span></div>
+          <div class="flex justify-between"><span>VAT (16%):</span><span id="rec-vat">KES 0.00</span></div>
+          <div class="flex justify-between font-bold text-xs pt-1 border-t border-slate-200">
+            <span>TOTAL AMOUNT:</span><span id="rec-total">KES 0.00</span>
+          </div>
+        </div>
+        <div class="pt-3 text-center">
+          <p class="text-[9px] font-bold text-emerald-800 uppercase">KRA eTIMS Verification QR</p>
+          <div class="flex justify-center py-2">
+            <img id="rec-qr-img" class="w-32 h-32 border border-slate-200 rounded p-1" alt="eTIMS QR Code">
+          </div>
+          <p class="text-[9px] text-slate-400 font-mono" id="rec-scu-info">SCU: KRA-ETIMS-ONLINE</p>
+          <p class="text-[9px] text-slate-400 mt-1">Thank you for your visit!</p>
+        </div>
+      </div>
+      <div class="mt-4 pt-3 border-t border-slate-200 flex justify-end space-x-2 no-print">
+        <button id="close-receipt-btn" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded text-xs font-bold">Close</button>
+        <button onclick="window.print()" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold shadow flex items-center space-x-1">
+          <i class="fa-solid fa-print"></i><span>Print Receipt</span>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Client-Side State & POS Engine Script -->
+  <!-- ========================================================================= -->
+  <!-- MODAL: M-PESA STK PUSH WAITING -->
+  <!-- ========================================================================= -->
+  <div id="modal-mpesa-wait" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-white rounded-2xl max-w-xs w-full shadow-2xl p-5 text-center border border-slate-200">
+      <div class="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center mx-auto mb-3 text-xl animate-bounce">
+        <i class="fa-solid fa-mobile-screen"></i>
+      </div>
+      <h3 class="font-bold text-sm text-slate-800">M-Pesa STK Push Sent</h3>
+      <p class="text-xs text-slate-500 mt-1">Prompting customer phone for PIN...</p>
+      <div class="py-3 font-mono text-emerald-700 font-black text-lg" id="mpesa-wait-amount">KES 0.00</div>
+      <p class="text-[10px] text-slate-400" id="mpesa-wait-phone">254...</p>
+      <div class="mt-4 flex justify-center">
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+          <span class="w-2 h-2 mr-1.5 bg-emerald-500 rounded-full animate-ping"></span>
+          Waiting for PIN confirmation...
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- PHARMACORE CORE CLIENT JAVASCRIPT LOGIC -->
+  <!-- ========================================================================= -->
   <script>
-    // State
+    // --- Application State ---
+    let currentUser = {
+      userId: 2,
+      username: 'carson',
+      fullName: 'Carson Sila',
+      role: 'ROLE_ADMIN'
+    };
+
     let allProducts = [];
     let cart = [];
     let currentCategory = "";
-    let activeCheckoutRequestId = null;
-    let mpesaPollingInterval = null;
-    let currentMobileTab = "catalog"; // "catalog" or "cart"
+    let currentMobileTab = "catalog";
+    let activeStockTakeSession = null;
+    let allSuppliers = [];
 
-    // Elements
-    const searchInput = document.getElementById("search-input");
+    // --- DOM Elements ---
     const productsGrid = document.getElementById("products-grid");
     const cartContainer = document.getElementById("cart-items-container");
-    const cartBadge = document.getElementById("cart-count-badge");
+    const emptyMsg = document.getElementById("cart-empty-msg");
+    const subtotalEl = document.getElementById("pos-subtotal");
+    const exemptEl = document.getElementById("pos-exempt");
+    const vatEl = document.getElementById("pos-vat");
+    const totalEl = document.getElementById("pos-total");
+    const cartBadge = document.getElementById("cart-badge");
     const mobileTabCartBadge = document.getElementById("mobile-tab-cart-badge");
-    const emptyMsg = document.getElementById("empty-cart-msg");
-    const subtotalEl = document.getElementById("summary-subtotal");
-    const exemptEl = document.getElementById("summary-exempt");
-    const vatEl = document.getElementById("summary-vat");
-    const totalEl = document.getElementById("summary-total");
     const payCashBtn = document.getElementById("pay-cash-btn");
     const payMpesaBtn = document.getElementById("pay-mpesa-btn");
-    
-    // Mobile Elements
-    const sectionCatalog = document.getElementById("section-catalog");
-    const sectionCart = document.getElementById("section-cart");
-    const tabCatalog = document.getElementById("tab-catalog");
-    const tabCart = document.getElementById("tab-cart");
-    const floatingBar = document.getElementById("mobile-floating-cart-bar");
+    const floatingBar = document.getElementById("floating-cart-bar");
     const floatingCartCount = document.getElementById("floating-cart-count");
     const floatingCartTotal = document.getElementById("floating-cart-total");
-    const floatingViewCartBtn = document.getElementById("floating-view-cart-btn");
 
-    // Modals
-    const receiptModal = document.getElementById("receipt-modal");
-    const receiptTextEl = document.getElementById("receipt-text");
-    const modalQrImg = document.getElementById("modal-qr-image");
-    
-    const mpesaModal = document.getElementById("mpesa-modal");
-    const mpesaModalAmount = document.getElementById("mpesa-modal-amount");
-    const mpesaModalPhone = document.getElementById("mpesa-modal-phone");
-    const mpesaWaitingBox = document.getElementById("mpesa-waiting-box");
-    const sendStkBtn = document.getElementById("send-stk-btn");
-
-    const zreportModal = document.getElementById("zreport-modal");
-    const zreportText = document.getElementById("zreport-text");
-
-    const alertsModal = document.getElementById("alerts-modal");
-    const refundModal = document.getElementById("refund-modal");
-
-    // Live Clocks
+    // Clock
     setInterval(() => {
-      const timeStr = new Date().toLocaleTimeString();
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString();
       document.getElementById("live-clock").textContent = timeStr;
-      const dt = document.getElementById("live-clock-desktop");
-      if (dt) dt.textContent = timeStr;
+      document.getElementById("live-clock-desktop").textContent = timeStr;
     }, 1000);
 
-    // Mobile Tab Switching
-    function setMobileTab(tab) {
+    // --- Navigation Tabs ---
+    document.querySelectorAll(".module-tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tab = btn.getAttribute("data-tab");
+        switchModuleTab(tab);
+      });
+    });
+
+    function switchModuleTab(tabName) {
+      document.querySelectorAll(".module-tab-btn").forEach(b => {
+        b.classList.remove("bg-emerald-600", "text-white", "shadow-sm");
+        b.classList.add("text-slate-600", "hover:bg-slate-100");
+      });
+      const activeBtn = document.getElementById(`nav-tab-${tabName}`);
+      if (activeBtn) {
+        activeBtn.classList.add("bg-emerald-600", "text-white", "shadow-sm");
+        activeBtn.classList.remove("text-slate-600", "hover:bg-slate-100");
+      }
+
+      document.querySelectorAll(".module-view").forEach(v => v.classList.add("hidden"));
+      const targetView = document.getElementById(`view-${tabName}`);
+      if (targetView) targetView.classList.remove("hidden");
+
+      // Load specific tab data
+      if (tabName === "inventory") loadInventoryTable();
+      if (tabName === "stocktake") loadStockTakeView();
+      if (tabName === "suppliers") loadSuppliersView();
+      if (tabName === "staff") loadStaffView();
+      if (tabName === "reports") loadReportsView();
+    }
+
+    // --- Mobile POS Tabs (Catalog vs Cart) ---
+    const tabCatalog = document.getElementById("tab-catalog");
+    const tabCart = document.getElementById("tab-cart");
+    const sectionCatalog = document.getElementById("section-catalog");
+    const sectionCart = document.getElementById("section-cart");
+
+    tabCatalog.addEventListener("click", () => setMobilePosTab("catalog"));
+    tabCart.addEventListener("click", () => setMobilePosTab("cart"));
+    document.getElementById("floating-view-cart-btn").addEventListener("click", () => setMobilePosTab("cart"));
+
+    function setMobilePosTab(tab) {
       currentMobileTab = tab;
       if (window.innerWidth < 768) {
         if (tab === "catalog") {
@@ -618,21 +1108,6 @@
       }
     }
 
-    tabCatalog.addEventListener("click", () => setMobileTab("catalog"));
-    tabCart.addEventListener("click", () => setMobileTab("cart"));
-    floatingViewCartBtn.addEventListener("click", () => setMobileTab("cart"));
-
-    window.addEventListener("resize", () => {
-      if (window.innerWidth >= 768) {
-        sectionCatalog.classList.remove("hidden");
-        sectionCart.classList.remove("hidden");
-        sectionCart.classList.add("flex");
-        floatingBar.classList.add("translate-y-full");
-      } else {
-        setMobileTab(currentMobileTab);
-      }
-    });
-
     function updateFloatingBar() {
       if (window.innerWidth < 768 && currentMobileTab === "catalog" && cart.length > 0) {
         const total = getCartTotal();
@@ -645,7 +1120,7 @@
       }
     }
 
-    // Load Products on startup
+    // --- Data Loaders ---
     async function loadProducts(query = "") {
       try {
         const url = query ? `/api/v1/pos/products?q=${encodeURIComponent(query)}` : '/api/v1/pos/products';
@@ -657,22 +1132,6 @@
       }
     }
 
-    // Load Inventory Alerts count
-    async function checkAlerts() {
-      try {
-        const res = await fetch('/api/v1/reports/inventory-alerts');
-        if (res.ok) {
-          const data = await res.json();
-          const total = (data.expiredCount || 0) + (data.expiringSoonCount || 0) + (data.lowStockCount || 0);
-          document.getElementById("nav-alert-badge").textContent = total;
-          window.cachedAlerts = data;
-        }
-      } catch (e) {
-        console.error("Failed to fetch alerts", e);
-      }
-    }
-
-    // Render Product Cards
     function renderProducts() {
       productsGrid.innerHTML = "";
       const filtered = allProducts.filter(p => !currentCategory || (p.category && p.category.code === currentCategory));
@@ -681,7 +1140,7 @@
         productsGrid.innerHTML = `
           <div class="col-span-full py-12 text-center text-slate-400">
             <i class="fa-solid fa-magnifying-glass text-3xl mb-2 text-slate-300"></i>
-            <p class="text-xs">No matching pharmaceuticals or products found.</p>
+            <p class="text-xs">No matching pharmaceuticals found.</p>
           </div>
         `;
         return;
@@ -693,31 +1152,28 @@
         const badgeText = isExempt ? '[E] Exempt 0%' : '[A] 16% VAT';
 
         const card = document.createElement("div");
-        card.className = "bg-white p-3 sm:p-3.5 rounded-xl border border-slate-200 hover:border-emerald-500 hover:shadow-md transition cursor-pointer flex flex-col justify-between active:scale-[0.99]";
+        card.className = "bg-white p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:shadow-md transition cursor-pointer flex flex-col justify-between active:scale-[0.99]";
         card.innerHTML = `
           <div>
             <div class="flex items-start justify-between gap-1">
-              <span class="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeColor}">${badgeText}</span>
-              <span class="text-[9px] sm:text-[10px] text-slate-400 font-mono">${p.sku}</span>
+              <span class="text-[9px] font-bold px-1.5 py-0.5 rounded ${badgeColor}">${badgeText}</span>
+              <span class="text-[9px] text-slate-400 font-mono">${p.sku}</span>
             </div>
             <h3 class="font-bold text-slate-800 text-xs sm:text-sm mt-1 leading-snug">${p.brandName}</h3>
-            <p class="text-[10px] sm:text-[11px] text-slate-500 italic">${p.genericName || ''}</p>
+            <p class="text-[10px] text-slate-500 italic">${p.genericName || ''}</p>
           </div>
           <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between">
             <span class="text-xs sm:text-sm font-black text-emerald-700">KES ${p.sellingPrice.toFixed(2)}</span>
-            <button class="bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center space-x-1">
+            <button class="bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white px-2 py-1 rounded text-xs font-bold transition flex items-center space-x-1">
               <span>+ Add</span>
             </button>
           </div>
         `;
-        card.addEventListener("click", () => {
-          addToCart(p);
-        });
+        card.addEventListener("click", () => addToCart(p));
         productsGrid.appendChild(card);
       });
     }
 
-    // Add to Cart
     function addToCart(product) {
       const existing = cart.find(item => item.product.productId === product.productId);
       if (existing) {
@@ -734,7 +1190,6 @@
       updateFloatingBar();
     }
 
-    // Render Cart & Compute Live Taxes
     function renderCart() {
       cartContainer.innerHTML = "";
       if (cart.length === 0) {
@@ -756,402 +1211,912 @@
 
       let subtotal = 0;
       let exemptTotal = 0;
+      let taxableNet = 0;
       let vatTotal = 0;
       let totalQty = 0;
 
       cart.forEach((item, index) => {
-        const itemGross = item.unitPrice * item.quantity;
-        subtotal += itemGross;
+        const p = item.product;
+        const lineTotal = item.unitPrice * item.quantity;
+        subtotal += lineTotal;
         totalQty += item.quantity;
 
-        const isExempt = item.product.taxClassification.classCode === 'EXEMPT';
+        const isExempt = p.taxClassification.classCode === 'EXEMPT';
         if (isExempt) {
-          exemptTotal += itemGross;
-        } else if (item.product.taxClassification.classCode === 'VAT_16') {
-          const net = itemGross / 1.16;
-          vatTotal += (itemGross - net);
+          exemptTotal += lineTotal;
+        } else {
+          const lineNet = lineTotal / 1.16;
+          taxableNet += lineNet;
+          vatTotal += (lineTotal - lineNet);
         }
 
         const row = document.createElement("div");
-        row.className = "bg-slate-50 p-2 sm:p-2.5 rounded-xl border border-slate-200 flex items-center justify-between text-xs";
+        row.className = "p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between";
         row.innerHTML = `
-          <div class="flex-1 mr-2 min-w-0">
-            <div class="font-bold text-slate-800 leading-snug truncate">${item.product.brandName}</div>
-            <div class="text-[10px] sm:text-[11px] text-slate-500">KES ${item.unitPrice.toFixed(2)} / unit</div>
+          <div class="flex-1 pr-2">
+            <h4 class="font-bold text-xs text-slate-800 leading-tight">${p.brandName}</h4>
+            <div class="text-[10px] text-slate-500 font-mono">KES ${item.unitPrice.toFixed(2)} / unit</div>
           </div>
-          <div class="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0">
+          <div class="flex items-center space-x-2">
             <div class="flex items-center border border-slate-300 rounded-lg bg-white overflow-hidden">
-              <button class="px-2 py-0.5 hover:bg-slate-100 font-bold active:bg-slate-200" onclick="updateQty(${index}, -1)">-</button>
-              <span class="px-2 font-bold">${item.quantity}</span>
-              <button class="px-2 py-0.5 hover:bg-slate-100 font-bold active:bg-slate-200" onclick="updateQty(${index}, 1)">+</button>
+              <button class="px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-100 font-bold" onclick="updateQty(${index}, -1)">-</button>
+              <span class="px-2 text-xs font-bold font-mono">${item.quantity}</span>
+              <button class="px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-100 font-bold" onclick="updateQty(${index}, 1)">+</button>
             </div>
-            <span class="font-bold text-slate-800 w-14 sm:w-16 text-right">KES ${itemGross.toFixed(2)}</span>
-            <button class="text-rose-500 hover:text-rose-700 ml-1 p-1" onclick="removeItem(${index})">
-              <i class="fa-solid fa-trash-can"></i>
+            <div class="text-right w-16">
+              <span class="font-bold text-xs text-slate-800 font-mono">KES ${lineTotal.toFixed(2)}</span>
+            </div>
+            <button class="text-slate-400 hover:text-rose-600 text-xs ml-1" onclick="removeItem(${index})">
+              <i class="fa-solid fa-xmark"></i>
             </button>
           </div>
         `;
         cartContainer.appendChild(row);
       });
 
-      cartBadge.textContent = totalQty;
-      mobileTabCartBadge.textContent = totalQty;
+      const grandTotal = subtotal;
       subtotalEl.textContent = `KES ${subtotal.toFixed(2)}`;
       exemptEl.textContent = `KES ${exemptTotal.toFixed(2)}`;
       vatEl.textContent = `KES ${vatTotal.toFixed(2)}`;
-      totalEl.textContent = `KES ${subtotal.toFixed(2)}`;
+      totalEl.textContent = `KES ${grandTotal.toFixed(2)}`;
+      cartBadge.textContent = totalQty;
+      mobileTabCartBadge.textContent = totalQty;
       updateFloatingBar();
     }
 
-    window.updateQty = (index, delta) => {
-      cart[index].quantity += delta;
-      if (cart[index].quantity <= 0) cart.splice(index, 1);
-      renderCart();
-    };
-
-    window.removeItem = (index) => {
-      cart.splice(index, 1);
-      renderCart();
-    };
-
-    // Calculate current cart total amount
-    function getCartTotal() {
-      return cart.reduce((acc, i) => acc + (i.unitPrice * i.quantity), 0);
-    }
-
-    // Fast Checkout Execution
-    async function processCheckout(method, paymentRef = null) {
-      if (cart.length === 0) return;
-
-      const buyerPin = document.getElementById("input-buyer-pin").value.trim();
-      const buyerName = document.getElementById("input-buyer-name").value.trim() || "Walk-in Retail";
-      const buyerPhone = document.getElementById("input-buyer-phone").value.trim() || null;
-      const rxRef = document.getElementById("input-rx-ref").value.trim();
-      const doctorName = document.getElementById("input-doctor-name").value.trim();
-
-      const ref = paymentRef || (method === 'MPESA' ? 'MPESA-' + Math.random().toString(36).substring(2, 9).toUpperCase() : 'CASH');
-
-      const payload = {
-        cashierId: 1,
-        buyerPin: buyerPin || null,
-        buyerName: buyerName,
-        buyerPhone: buyerPhone,
-        prescriptionReference: rxRef || null,
-        doctorName: doctorName || null,
-        paymentMethod: method,
-        paymentReference: ref,
-        items: cart.map(i => ({
-          productId: i.product.productId,
-          unitId: i.unitId,
-          quantity: i.quantity
-        }))
-      };
-
-      try {
-        const res = await fetch('/api/v1/pos/checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) throw new Error("Checkout failed");
-        const checkoutResult = await res.json();
-
-        // Show Modal with Thermal Receipt & QR Code
-        receiptTextEl.textContent = checkoutResult.formattedReceipt;
-        modalQrImg.src = `/api/v1/pos/orders/${checkoutResult.orderId}/qr-image?size=250`;
-        receiptModal.classList.remove("hidden");
-
-        // Clear cart for next customer
-        cart = [];
+    window.updateQty = function(index, delta) {
+      if (cart[index]) {
+        cart[index].quantity += delta;
+        if (cart[index].quantity <= 0) {
+          cart.splice(index, 1);
+        }
         renderCart();
-        checkAlerts();
-        setMobileTab("catalog");
-      } catch (err) {
-        alert("Transaction error: " + err.message);
       }
+    };
+
+    window.removeItem = function(index) {
+      if (cart[index]) {
+        cart.splice(index, 1);
+        renderCart();
+      }
+    };
+
+    document.getElementById("clear-cart-btn").addEventListener("click", () => {
+      cart = [];
+      renderCart();
+    });
+
+    function getCartTotal() {
+      return cart.reduce((sum, i) => sum + (i.unitPrice * i.quantity), 0);
     }
 
-    // M-Pesa STK Push Flow
-    payMpesaBtn.addEventListener("click", () => {
-      if (cart.length === 0) return;
-      const total = getCartTotal();
-      mpesaModalAmount.textContent = `KES ${total.toFixed(2)}`;
-      
-      const phoneInput = document.getElementById("input-buyer-phone").value.trim();
-      mpesaModalPhone.value = phoneInput || "0712345678";
-      mpesaWaitingBox.classList.add("hidden");
-      sendStkBtn.disabled = false;
-      mpesaModal.classList.remove("hidden");
+    // --- Search & Category Filtering ---
+    document.getElementById("pos-search-input").addEventListener("input", (e) => {
+      loadProducts(e.target.value);
     });
 
-    sendStkBtn.addEventListener("click", async () => {
-      const phone = mpesaModalPhone.value.trim();
-      if (!phone) {
-        alert("Please enter customer's mobile number.");
-        return;
-      }
-
-      sendStkBtn.disabled = true;
-      mpesaWaitingBox.classList.remove("hidden");
-
-      try {
-        const total = getCartTotal();
-        const stkRes = await fetch('/api/v1/payments/mpesa/stk-push', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            phoneNumber: phone,
-            amount: total,
-            orderReference: 'ORD-' + Date.now(),
-            description: 'Pharmacy OTC Checkout'
-          })
-        });
-
-        const data = await stkRes.json();
-        activeCheckoutRequestId = data.checkoutRequestId;
-
-        // Start polling for payment confirmation
-        if (mpesaPollingInterval) clearInterval(mpesaPollingInterval);
-        mpesaPollingInterval = setInterval(async () => {
-          try {
-            const pollRes = await fetch(`/api/v1/payments/mpesa/status/${activeCheckoutRequestId}`);
-            const pollData = await pollRes.json();
-
-            if (pollData.status === 'SUCCESS') {
-              clearInterval(mpesaPollingInterval);
-              mpesaModal.classList.add("hidden");
-              // Complete checkout with the real M-Pesa receipt!
-              processCheckout('MPESA', pollData.mpesaReceiptNumber);
-            } else if (pollData.status === 'FAILED' || pollData.status === 'CANCELLED') {
-              clearInterval(mpesaPollingInterval);
-              alert("M-Pesa payment was not completed: " + pollData.responseDescription);
-              mpesaWaitingBox.classList.add("hidden");
-              sendStkBtn.disabled = false;
-            }
-          } catch (pollErr) {
-            console.error("Polling error", pollErr);
-          }
-        }, 1000);
-
-      } catch (err) {
-        alert("Failed to initiate STK push: " + err.message);
-        sendStkBtn.disabled = false;
-        mpesaWaitingBox.classList.add("hidden");
-      }
-    });
-
-    document.getElementById("cancel-mpesa-btn").addEventListener("click", () => {
-      if (mpesaPollingInterval) clearInterval(mpesaPollingInterval);
-      mpesaModal.classList.add("hidden");
-    });
-
-    // Z-Report Actions
-    document.getElementById("nav-zreport-btn").addEventListener("click", async () => {
-      try {
-        const res = await fetch('/api/v1/reports/z-report');
-        const data = await res.json();
-        zreportText.textContent = data.thermalReportText;
-        zreportModal.classList.remove("hidden");
-      } catch (err) {
-        alert("Failed to load Z-Report: " + err.message);
-      }
-    });
-
-    document.getElementById("close-zreport-btn").addEventListener("click", () => zreportModal.classList.add("hidden"));
-    document.getElementById("dismiss-zreport-btn").addEventListener("click", () => zreportModal.classList.add("hidden"));
-    document.getElementById("print-zreport-btn").addEventListener("click", () => window.print());
-
-    // Alerts Modal Actions
-    document.getElementById("nav-alerts-btn").addEventListener("click", () => {
-      const data = window.cachedAlerts || {};
-      const expList = document.getElementById("expired-batches-list");
-      const soonList = document.getElementById("expiring-soon-list");
-      const lowList = document.getElementById("low-stock-list");
-
-      expList.innerHTML = (data.expiredBatches && data.expiredBatches.length > 0) ?
-        data.expiredBatches.map(b => `<div class="p-2 bg-rose-50 border border-rose-200 rounded"><strong>${b.batchNumber}</strong> — Expired: ${b.expiryDate} (Qty: ${b.quantityAvailable})</div>`).join("") :
-        '<div class="text-slate-400 italic">No expired batches in inventory.</div>';
-
-      soonList.innerHTML = (data.expiringSoonBatches && data.expiringSoonBatches.length > 0) ?
-        data.expiringSoonBatches.map(b => `<div class="p-2 bg-amber-50 border border-amber-200 rounded"><strong>${b.batchNumber}</strong> — Expiry: ${b.expiryDate} (Qty: ${b.quantityAvailable})</div>`).join("") :
-        '<div class="text-slate-400 italic">No batches expiring in next 90 days.</div>';
-
-      lowList.innerHTML = (data.lowStockProducts && data.lowStockProducts.length > 0) ?
-        data.lowStockProducts.map(p => `<div class="p-2 bg-blue-50 border border-blue-200 rounded"><strong>${p.brandName}</strong> (${p.sku}) — Stock: ${p.currentStock} (Reorder at: ${p.reorderLevel})</div>`).join("") :
-        '<div class="text-slate-400 italic">All products above reorder threshold.</div>';
-
-      alertsModal.classList.remove("hidden");
-    });
-
-    document.getElementById("close-alerts-btn").addEventListener("click", () => alertsModal.classList.add("hidden"));
-    document.getElementById("dismiss-alerts-btn").addEventListener("click", () => alertsModal.classList.add("hidden"));
-
-    // Returns / Credit Note Actions
-    document.getElementById("nav-refund-btn").addEventListener("click", () => {
-      document.getElementById("refund-order-id").value = "";
-      document.getElementById("refund-reason").value = "";
-      document.getElementById("refund-result-box").classList.add("hidden");
-      refundModal.classList.remove("hidden");
-    });
-
-    document.getElementById("close-refund-btn").addEventListener("click", () => refundModal.classList.add("hidden"));
-    document.getElementById("cancel-refund-btn").addEventListener("click", () => refundModal.classList.add("hidden"));
-
-    document.getElementById("submit-refund-btn").addEventListener("click", async () => {
-      const orderId = document.getElementById("refund-order-id").value.trim();
-      const reason = document.getElementById("refund-reason").value.trim();
-      const restock = document.getElementById("refund-restock").checked;
-
-      if (!orderId) {
-        alert("Please enter an Order ID");
-        return;
-      }
-
-      try {
-        const res = await fetch('/api/v1/credit-notes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId: parseInt(orderId),
-            reason: reason || "Customer Return",
-            restockInventory: restock
-          })
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || "Return processing failed");
-
-        const box = document.getElementById("refund-result-box");
-        box.innerHTML = `
-          <div class="font-bold text-emerald-800">Credit Note Issued: ${data.creditNoteNumber}</div>
-          <div>KRA Credit Note No: <span class="font-mono font-bold">${data.kraCreditNoteNumber}</span></div>
-          <div>Refund Total: <strong>KES ${data.refundAmount.toFixed(2)}</strong> (Tax Refund: KES ${data.taxRefundAmount.toFixed(2)})</div>
-          <div class="text-emerald-600 font-semibold mt-1"><i class="fa-solid fa-check"></i> Inventory restocked & KRA tax liability credited.</div>
-        `;
-        box.classList.remove("hidden");
-        loadProducts();
-        checkAlerts();
-      } catch (err) {
-        alert("Error: " + err.message);
-      }
-    });
-
-    // Add Product Modal Handlers
-    const productModal = document.getElementById("product-modal");
-    document.getElementById("nav-add-product-btn").addEventListener("click", () => {
-      document.getElementById("new-brand-name").value = "";
-      document.getElementById("new-generic-name").value = "";
-      document.getElementById("new-barcode").value = "";
-      document.getElementById("new-sku").value = "";
-      document.getElementById("new-selling-price").value = "";
-      document.getElementById("new-cost-price").value = "";
-      document.getElementById("new-batch-no").value = "";
-      document.getElementById("new-expiry-date").value = "";
-      document.getElementById("new-stock-qty").value = "";
-      productModal.classList.remove("hidden");
-    });
-
-    document.getElementById("close-product-modal-btn").addEventListener("click", () => productModal.classList.add("hidden"));
-    document.getElementById("cancel-product-btn").addEventListener("click", () => productModal.classList.add("hidden"));
-
-    document.getElementById("save-product-btn").addEventListener("click", async () => {
-      const brand = document.getElementById("new-brand-name").value.trim();
-      const generic = document.getElementById("new-generic-name").value.trim();
-      const barcode = document.getElementById("new-barcode").value.trim();
-      const sku = document.getElementById("new-sku").value.trim();
-      const catId = parseInt(document.getElementById("new-category").value);
-      const taxId = parseInt(document.getElementById("new-tax-class").value);
-      const unitId = parseInt(document.getElementById("new-base-unit").value);
-      const sellingPrice = parseFloat(document.getElementById("new-selling-price").value);
-      const costPrice = parseFloat(document.getElementById("new-cost-price").value) || 0;
-      const batchNo = document.getElementById("new-batch-no").value.trim();
-      const expiryDate = document.getElementById("new-expiry-date").value;
-      const stockQty = parseInt(document.getElementById("new-stock-qty").value) || 0;
-
-      if (!brand) {
-        alert("Please enter the Brand Name.");
-        return;
-      }
-      if (isNaN(sellingPrice) || sellingPrice <= 0) {
-        alert("Please enter a valid Selling Price.");
-        return;
-      }
-
-      const payload = {
-        brandName: brand,
-        genericName: generic || null,
-        barcode: barcode || null,
-        sku: sku || null,
-        categoryId: catId,
-        taxClassId: taxId,
-        baseUnitId: unitId,
-        sellingPrice: sellingPrice,
-        costPrice: costPrice,
-        initialBatchNumber: batchNo || null,
-        initialExpiryDate: expiryDate || null,
-        initialStockQuantity: stockQty > 0 ? stockQty : null
-      };
-
-      try {
-        const res = await fetch('/api/v1/inventory/products', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) throw new Error("Failed to save product to inventory");
-        productModal.classList.add("hidden");
-        loadProducts();
-        checkAlerts();
-        alert(`Successfully added ${brand} to the pharmacy inventory!`);
-      } catch (err) {
-        alert("Error: " + err.message);
-      }
-    });
-
-    // Cash Checkout
-    payCashBtn.addEventListener("click", () => processCheckout("CASH"));
-    document.getElementById("clear-cart-btn").addEventListener("click", () => { cart = []; renderCart(); updateFloatingBar(); });
-    document.getElementById("close-modal-btn").addEventListener("click", () => receiptModal.classList.add("hidden"));
-    document.getElementById("new-sale-btn").addEventListener("click", () => receiptModal.classList.add("hidden"));
-    document.getElementById("print-receipt-btn").addEventListener("click", () => window.print());
-
-    // Search events
-    searchInput.addEventListener("input", (e) => loadProducts(e.target.value));
-    document.getElementById("clear-search-btn").addEventListener("click", () => { searchInput.value = ""; loadProducts(""); });
-
-    // Category pills
     document.querySelectorAll(".cat-pill").forEach(pill => {
       pill.addEventListener("click", () => {
-        document.querySelectorAll(".cat-pill").forEach(p => p.classList.remove("active", "bg-emerald-700", "text-white"));
-        pill.classList.add("active", "bg-emerald-700", "text-white");
+        document.querySelectorAll(".cat-pill").forEach(p => {
+          p.classList.remove("bg-emerald-600", "text-white", "shadow-sm");
+          p.classList.add("bg-white", "text-slate-600", "border", "border-slate-200");
+        });
+        pill.classList.add("bg-emerald-600", "text-white", "shadow-sm");
+        pill.classList.remove("bg-white", "text-slate-600", "border", "border-slate-200");
         currentCategory = pill.getAttribute("data-cat");
         renderProducts();
       });
     });
 
-    // Keyboard Shortcuts (F2: Search, F9: Cash, F10: M-Pesa, Esc: Close)
-    window.addEventListener("keydown", (e) => {
-      if (e.key === "F2") { e.preventDefault(); searchInput.focus(); searchInput.select(); }
-      if (e.key === "F9") { e.preventDefault(); processCheckout("CASH"); }
-      if (e.key === "F10") { e.preventDefault(); payMpesaBtn.click(); }
-      if (e.key === "Escape") {
-        receiptModal.classList.add("hidden");
-        mpesaModal.classList.add("hidden");
-        zreportModal.classList.add("hidden");
-        alertsModal.classList.add("hidden");
-        refundModal.classList.add("hidden");
-        productModal.classList.add("hidden");
+    // --- Checkout (Cash & M-Pesa) ---
+    payCashBtn.addEventListener("click", () => submitCheckout("CASH"));
+    payMpesaBtn.addEventListener("click", () => handleMpesaCheckout());
+
+    async function submitCheckout(paymentMethod, mpesaRef = null) {
+      if (cart.length === 0) return;
+
+      const payload = {
+        cashierId: currentUser.userId || 1,
+        paymentMethod: paymentMethod,
+        customerPhone: document.getElementById("cust-phone-input").value.trim() || null,
+        customerPin: document.getElementById("cust-pin-input").value.trim() || null,
+        items: cart.map(i => ({
+          productId: i.product.productId,
+          unitId: i.unitId,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          discountAmount: 0
+        }))
+      };
+
+      try {
+        const res = await fetch("/api/v1/pos/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error("Checkout failed");
+        const data = await res.json();
+
+        // Show KRA Receipt
+        showReceipt(data);
+
+        // Clear cart
+        cart = [];
+        renderCart();
+        loadProducts();
+      } catch (err) {
+        alert("Transaction failed: " + err.message);
+      }
+    }
+
+    function handleMpesaCheckout() {
+      const phoneInput = document.getElementById("cust-phone-input").value.trim() || "254712345678";
+      const total = getCartTotal();
+
+      document.getElementById("mpesa-wait-amount").textContent = `KES ${total.toFixed(2)}`;
+      document.getElementById("mpesa-wait-phone").textContent = phoneInput;
+      document.getElementById("modal-mpesa-wait").classList.remove("hidden");
+
+      // Trigger M-Pesa STK Push
+      fetch("/api/v1/payments/mpesa/stk-push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          phoneNumber: phoneInput,
+          amount: total,
+          orderReference: "POS-" + Date.now()
+        })
+      }).then(res => res.json()).then(data => {
+        // Poll status or auto-confirm in dev mode
+        setTimeout(() => {
+          document.getElementById("modal-mpesa-wait").classList.add("hidden");
+          submitCheckout("MPESA", data.checkoutRequestId);
+        }, 3000);
+      }).catch(err => {
+        document.getElementById("modal-mpesa-wait").classList.add("hidden");
+        alert("M-Pesa STK push error: " + err.message);
+      });
+    }
+
+    function showReceipt(data) {
+      document.getElementById("rec-number").textContent = data.orderNumber || "ORD-001";
+      document.getElementById("rec-date").textContent = new Date().toLocaleString();
+      document.getElementById("rec-cashier").textContent = currentUser.fullName;
+      document.getElementById("rec-pay-mode").textContent = data.paymentMethod || "CASH";
+
+      const body = document.getElementById("rec-items-body");
+      body.innerHTML = "";
+      if (data.lines) {
+        data.lines.forEach(line => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td class="py-0.5">${line.productName}</td>
+            <td class="py-0.5 text-center">${line.quantity}</td>
+            <td class="py-0.5 text-right">${line.unitPrice.toFixed(2)}</td>
+            <td class="py-0.5 text-right font-bold">${line.lineTotal.toFixed(2)}</td>
+          `;
+          body.appendChild(row);
+        });
+      }
+
+      document.getElementById("rec-subtotal").textContent = `KES ${data.subtotalAmount.toFixed(2)}`;
+      document.getElementById("rec-exempt").textContent = `KES ${(data.subtotalAmount - (data.taxAmount / 0.16)).toFixed(2)}`;
+      document.getElementById("rec-vat").textContent = `KES ${data.taxAmount.toFixed(2)}`;
+      document.getElementById("rec-total").textContent = `KES ${data.totalAmount.toFixed(2)}`;
+
+      // QR Code
+      const qrUrl = `/api/v1/pos/receipts/${data.fiscalInvoiceId || 1}/qr`;
+      document.getElementById("rec-qr-img").src = qrUrl;
+
+      document.getElementById("receipt-modal").classList.remove("hidden");
+    }
+
+    document.getElementById("close-receipt-btn").addEventListener("click", () => {
+      document.getElementById("receipt-modal").classList.add("hidden");
+    });
+
+    // --- VIEW 2: INVENTORY & PRICES ---
+    async function loadInventoryTable() {
+      const tbody = document.getElementById("inventory-table-body");
+      tbody.innerHTML = '<tr><td colspan="9" class="p-6 text-center text-slate-400">Loading catalog...</td></tr>';
+      
+      try {
+        const res = await fetch("/api/v1/pos/products");
+        allProducts = await res.json();
+        tbody.innerHTML = "";
+
+        allProducts.forEach(p => {
+          const cost = p.costPrice || 0;
+          const sell = p.sellingPrice || 0;
+          const margin = sell > 0 ? (((sell - cost) / sell) * 100).toFixed(1) : 0;
+          const isExempt = p.taxClassification.classCode === 'EXEMPT';
+
+          const tr = document.createElement("tr");
+          tr.className = "hover:bg-slate-50 transition";
+          tr.innerHTML = `
+            <td class="p-3 font-mono text-slate-500">${p.sku}</td>
+            <td class="p-3">
+              <span class="font-bold text-slate-800">${p.brandName}</span>
+              <p class="text-[10px] text-slate-400 italic">${p.genericName || ''}</p>
+            </td>
+            <td class="p-3"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">${p.category ? p.category.name : '-'}</span></td>
+            <td class="p-3"><span class="${isExempt ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'} px-2 py-0.5 rounded text-[10px] font-bold">${p.taxClassification.classCode}</span></td>
+            <td class="p-3 text-right font-mono text-slate-600">KES ${cost.toFixed(2)}</td>
+            <td class="p-3 text-right font-mono font-bold text-emerald-700">KES ${sell.toFixed(2)}</td>
+            <td class="p-3 text-center font-bold ${margin > 20 ? 'text-emerald-600' : 'text-amber-600'}">${margin}%</td>
+            <td class="p-3 text-center font-bold text-slate-800">Available</td>
+            <td class="p-3 text-center">
+              <button class="btn-edit-price bg-slate-100 hover:bg-emerald-600 hover:text-white text-slate-700 px-2.5 py-1 rounded text-xs font-bold transition"
+                      data-id="${p.productId}" data-name="${p.brandName}" data-cost="${cost}" data-sell="${sell}">
+                <i class="fa-solid fa-pen-to-square"></i> Price
+              </button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        // Attach price edit events
+        document.querySelectorAll(".btn-edit-price").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-id");
+            const name = btn.getAttribute("data-name");
+            const cost = btn.getAttribute("data-cost");
+            const sell = btn.getAttribute("data-sell");
+
+            document.getElementById("edit-price-product-id").value = id;
+            document.getElementById("edit-price-product-name").textContent = name;
+            document.getElementById("edit-price-cost").value = cost;
+            document.getElementById("edit-price-selling").value = sell;
+            document.getElementById("edit-price-pin").value = "";
+
+            document.getElementById("modal-edit-price").classList.remove("hidden");
+          });
+        });
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="9" class="p-6 text-center text-rose-500">Failed to load inventory.</td></tr>';
+      }
+    }
+
+    document.getElementById("form-edit-price").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const productId = document.getElementById("edit-price-product-id").value;
+      const sellingPrice = parseFloat(document.getElementById("edit-price-selling").value);
+      const costPrice = parseFloat(document.getElementById("edit-price-cost").value);
+      const pin = document.getElementById("edit-price-pin").value.trim();
+
+      try {
+        const res = await fetch(`/api/v1/inventory/products/${productId}/price`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sellingPrice: sellingPrice,
+            costPrice: costPrice,
+            managerPin: pin,
+            managerUsername: currentUser.username
+          })
+        });
+
+        if (!res.ok) throw new Error("Price update failed");
+        document.getElementById("modal-edit-price").classList.add("hidden");
+        loadInventoryTable();
+        loadProducts();
+      } catch (err) {
+        alert("Failed to update price: " + err.message);
       }
     });
 
-    // Initial Load
-    loadProducts();
-    checkAlerts();
-    if (window.innerWidth < 768) {
-      setMobileTab("catalog");
+    // --- VIEW 3: STOCK TAKING & RECONCILIATION ---
+    async function loadStockTakeView() {
+      try {
+        const res = await fetch("/api/v1/stock-take/sessions");
+        const sessions = await res.json();
+        const active = sessions.find(s => s.status === 'IN_PROGRESS');
+
+        const badge = document.getElementById("stocktake-status-badge");
+        const tbody = document.getElementById("stocktake-table-body");
+        const btnSave = document.getElementById("btn-save-stocktake");
+        const btnRecon = document.getElementById("btn-reconcile-stocktake");
+
+        if (!active) {
+          activeStockTakeSession = null;
+          badge.textContent = "No Active Session";
+          badge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700";
+          btnSave.disabled = true;
+          btnRecon.disabled = true;
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="7" class="p-8 text-center text-slate-400">
+                <i class="fa-solid fa-clipboard-list text-3xl mb-2 text-slate-300"></i>
+                <p>No active stock take session. Click "Start Stock Take" above to begin counting physical stock.</p>
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        activeStockTakeSession = active;
+        badge.textContent = `${active.sessionCode} (In Progress)`;
+        badge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800";
+        btnSave.disabled = false;
+        btnRecon.disabled = false;
+
+        renderStockTakeItems(active.items || []);
+      } catch (e) {
+        console.error("Failed to load stock take session", e);
+      }
     }
+
+    function renderStockTakeItems(items) {
+      const tbody = document.getElementById("stocktake-table-body");
+      tbody.innerHTML = "";
+
+      let totalLines = items.length;
+      let matches = 0;
+      let shortages = 0;
+      let totalVarianceValue = 0;
+
+      items.forEach((item, index) => {
+        const diff = item.physicalQuantity - item.systemQuantity;
+        const diffVal = (item.unitCost || 0) * diff;
+        totalVarianceValue += diffVal;
+
+        if (diff === 0) matches++;
+        if (diff < 0) shortages++;
+
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-50 transition";
+        tr.innerHTML = `
+          <td class="p-3">
+            <span class="font-bold text-slate-800">${item.product.brandName}</span>
+            <p class="text-[10px] text-slate-400 font-mono">${item.product.sku}</p>
+          </td>
+          <td class="p-3 text-center font-bold font-mono text-slate-700">${item.systemQuantity}</td>
+          <td class="p-3 text-center">
+            <input type="number" min="0" value="${item.physicalQuantity}" 
+                   class="stk-count-input w-20 p-1.5 border border-slate-300 rounded text-center font-bold font-mono text-xs focus:border-indigo-500"
+                   data-product-id="${item.product.productId}" data-index="${index}">
+          </td>
+          <td class="p-3 text-center">
+            <span class="px-2 py-0.5 rounded font-mono font-bold text-xs ${diff === 0 ? 'bg-slate-100 text-slate-700' : diff < 0 ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}">
+              ${diff > 0 ? '+' : ''}${diff}
+            </span>
+          </td>
+          <td class="p-3 text-right font-mono font-bold ${diffVal < 0 ? 'text-rose-600' : 'text-slate-700'}">
+            KES ${diffVal.toFixed(2)}
+          </td>
+          <td class="p-3">
+            <select class="stk-reason-select p-1 border border-slate-200 rounded text-[11px] bg-white font-medium" data-index="${index}">
+              <option value="NONE" ${item.adjustmentReason === 'NONE' ? 'selected' : ''}>None (Match)</option>
+              <option value="COUNT_DISCREPANCY" ${item.adjustmentReason === 'COUNT_DISCREPANCY' ? 'selected' : ''}>Count Discrepancy</option>
+              <option value="DAMAGED" ${item.adjustmentReason === 'DAMAGED' ? 'selected' : ''}>Damaged Goods</option>
+              <option value="EXPIRED" ${item.adjustmentReason === 'EXPIRED' ? 'selected' : ''}>Expired Stock</option>
+              <option value="THEFT_OR_LOSS" ${item.adjustmentReason === 'THEFT_OR_LOSS' ? 'selected' : ''}>Theft / Shrinkage</option>
+            </select>
+          </td>
+          <td class="p-3">
+            <input type="text" placeholder="Remarks..." value="${item.notes || ''}" 
+                   class="stk-notes-input p-1 border border-slate-200 rounded text-[11px] w-full" data-index="${index}">
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById("stk-total-lines").textContent = totalLines;
+      document.getElementById("stk-matches").textContent = matches;
+      document.getElementById("stk-shortages").textContent = shortages;
+      document.getElementById("stk-variance-val").textContent = `KES ${totalVarianceValue.toFixed(2)}`;
+    }
+
+    document.getElementById("btn-start-stocktake").addEventListener("click", async () => {
+      try {
+        const res = await fetch("/api/v1/stock-take/sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ initiatedBy: currentUser.fullName, notes: "Periodic Store Audit" })
+        });
+        if (res.ok) {
+          loadStockTakeView();
+        }
+      } catch (e) {
+        alert("Failed to start stock take: " + e.message);
+      }
+    });
+
+    document.getElementById("btn-save-stocktake").addEventListener("click", async () => {
+      if (!activeStockTakeSession) return;
+      const countInputs = document.querySelectorAll(".stk-count-input");
+      const reasonSelects = document.querySelectorAll(".stk-reason-select");
+      const notesInputs = document.querySelectorAll(".stk-notes-input");
+
+      const items = [];
+      countInputs.forEach((input, i) => {
+        items.push({
+          productId: parseInt(input.getAttribute("data-product-id")),
+          physicalQuantity: parseInt(input.value) || 0,
+          adjustmentReason: reasonSelects[i].value,
+          notes: notesInputs[i].value
+        });
+      });
+
+      try {
+        const res = await fetch("/api/v1/stock-take/sessions/counts", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: activeStockTakeSession.sessionId,
+            items: items
+          })
+        });
+        if (res.ok) {
+          alert("Physical counts saved successfully!");
+          loadStockTakeView();
+        }
+      } catch (e) {
+        alert("Failed to save counts: " + e.message);
+      }
+    });
+
+    document.getElementById("btn-reconcile-stocktake").addEventListener("click", async () => {
+      if (!activeStockTakeSession) return;
+      const pin = prompt("Manager Authorization required. Enter Manager PIN (e.g. 0000):");
+      if (!pin) return;
+
+      try {
+        const res = await fetch(`/api/v1/stock-take/sessions/${activeStockTakeSession.sessionId}/reconcile`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            reconciledBy: currentUser.fullName,
+            managerPin: pin,
+            notes: "Store stock reconciled to physical counts"
+          })
+        });
+
+        if (res.ok) {
+          alert("Inventory successfully reconciled! Physical counts are now live in the POS.");
+          loadStockTakeView();
+          loadProducts();
+        }
+      } catch (e) {
+        alert("Reconciliation failed: " + e.message);
+      }
+    });
+
+    // --- VIEW 4: SUPPLIERS & INVOICES ---
+    async function loadSuppliersView() {
+      // Load Suppliers
+      try {
+        const supRes = await fetch("/api/v1/suppliers");
+        allSuppliers = await supRes.json();
+        
+        const dirBody = document.getElementById("suppliers-dir-table-body");
+        dirBody.innerHTML = "";
+        allSuppliers.forEach(s => {
+          const tr = document.createElement("tr");
+          tr.className = "hover:bg-slate-50";
+          tr.innerHTML = `
+            <td class="p-3 font-bold text-slate-800">${s.name}</td>
+            <td class="p-3 text-slate-600">${s.contactPerson || '-'}</td>
+            <td class="p-3 font-mono font-bold text-emerald-800">${s.kraPin || '-'}</td>
+            <td class="p-3 text-slate-600">${s.phone || '-'}</td>
+            <td class="p-3 text-slate-600">${s.email || '-'}</td>
+            <td class="p-3 text-slate-500">${s.address || '-'}</td>
+            <td class="p-3 text-center"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">${s.paymentTerms || 'COD'}</span></td>
+          `;
+          dirBody.appendChild(tr);
+        });
+
+        // Load Invoices
+        const invRes = await fetch("/api/v1/suppliers/invoices");
+        const invoices = await invRes.json();
+        const invBody = document.getElementById("invoices-table-body");
+        invBody.innerHTML = "";
+        
+        invoices.forEach(inv => {
+          const tr = document.createElement("tr");
+          tr.className = "hover:bg-slate-50";
+          tr.innerHTML = `
+            <td class="p-3 font-mono font-bold text-emerald-700">${inv.invoiceNumber}</td>
+            <td class="p-3 font-bold text-slate-800">${inv.supplier ? inv.supplier.name : '-'}</td>
+            <td class="p-3 text-slate-600">${inv.invoiceDate}</td>
+            <td class="p-3 text-right font-mono font-bold text-slate-800">KES ${inv.totalAmount.toFixed(2)}</td>
+            <td class="p-3 text-center"><span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold">${inv.paymentStatus || 'PAID'}</span></td>
+            <td class="p-3 text-slate-600">${inv.receivedBy || '-'}</td>
+            <td class="p-3 text-center font-bold">${inv.items ? inv.items.length : 0} items</td>
+          `;
+          invBody.appendChild(tr);
+        });
+      } catch (e) {
+        console.error("Failed to load suppliers data", e);
+      }
+    }
+
+    document.getElementById("subtab-invoices").addEventListener("click", () => {
+      document.getElementById("subtab-invoices").className = "py-2.5 border-b-2 border-emerald-600 text-emerald-700 transition";
+      document.getElementById("subtab-suppliers").className = "py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition";
+      document.getElementById("suppliers-invoices-pane").classList.remove("hidden");
+      document.getElementById("suppliers-dir-pane").classList.add("hidden");
+    });
+
+    document.getElementById("subtab-suppliers").addEventListener("click", () => {
+      document.getElementById("subtab-suppliers").className = "py-2.5 border-b-2 border-emerald-600 text-emerald-700 transition";
+      document.getElementById("subtab-invoices").className = "py-2.5 border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition";
+      document.getElementById("suppliers-dir-pane").classList.remove("hidden");
+      document.getElementById("suppliers-invoices-pane").classList.add("hidden");
+    });
+
+    // Supplier & Invoice Modals
+    document.getElementById("btn-add-supplier-modal").addEventListener("click", () => {
+      document.getElementById("modal-add-supplier").classList.remove("hidden");
+    });
+
+    document.getElementById("form-add-supplier").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = {
+        name: document.getElementById("sup-name").value.trim(),
+        contactPerson: document.getElementById("sup-contact").value.trim(),
+        kraPin: document.getElementById("sup-pin").value.trim(),
+        phone: document.getElementById("sup-phone").value.trim(),
+        email: document.getElementById("sup-email").value.trim(),
+        address: document.getElementById("sup-address").value.trim(),
+        paymentTerms: document.getElementById("sup-terms").value
+      };
+
+      try {
+        const res = await fetch("/api/v1/suppliers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          document.getElementById("modal-add-supplier").classList.add("hidden");
+          loadSuppliersView();
+        }
+      } catch (err) {
+        alert("Failed to save supplier: " + err.message);
+      }
+    });
+
+    document.getElementById("btn-receive-invoice-modal").addEventListener("click", () => {
+      const select = document.getElementById("inv-supplier-select");
+      select.innerHTML = "";
+      allSuppliers.forEach(s => {
+        const opt = document.createElement("option");
+        opt.value = s.supplierId;
+        opt.textContent = s.name;
+        select.appendChild(opt);
+      });
+
+      document.getElementById("inv-date").value = new Date().toISOString().split("T")[0];
+      document.getElementById("inv-number").value = "INV-" + Date.now().toString().slice(-6);
+
+      // Add one default row
+      const container = document.getElementById("invoice-lines-container");
+      container.innerHTML = "";
+      addInvoiceLine();
+
+      document.getElementById("modal-receive-invoice").classList.remove("hidden");
+    });
+
+    document.getElementById("btn-add-invoice-line").addEventListener("click", addInvoiceLine);
+
+    function addInvoiceLine() {
+      const container = document.getElementById("invoice-lines-container");
+      const row = document.createElement("div");
+      row.className = "inv-line-row p-2.5 bg-slate-50 border border-slate-200 rounded-xl grid grid-cols-6 gap-2 items-center";
+
+      let prodOptions = allProducts.map(p => `<option value="${p.productId}">${p.brandName}</option>`).join("");
+      const expiryDefault = new Date();
+      expiryDefault.setMonth(expiryDefault.getMonth() + 18);
+      const expStr = expiryDefault.toISOString().split("T")[0];
+
+      row.innerHTML = `
+        <div class="col-span-2">
+          <label class="block text-[10px] text-slate-500 mb-0.5">Medication</label>
+          <select class="line-prod-id w-full p-1.5 border border-slate-300 rounded bg-white text-xs font-bold">${prodOptions}</select>
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-0.5">Batch #</label>
+          <input type="text" value="BCH-${Date.now().toString().slice(-4)}" class="line-batch-no w-full p-1.5 border border-slate-300 rounded text-xs font-mono">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-0.5">Expiry Date</label>
+          <input type="date" value="${expStr}" class="line-expiry w-full p-1.5 border border-slate-300 rounded text-xs">
+        </div>
+        <div>
+          <label class="block text-[10px] text-slate-500 mb-0.5">Qty</label>
+          <input type="number" min="1" value="100" class="line-qty w-full p-1.5 border border-slate-300 rounded text-xs font-bold font-mono">
+        </div>
+        <div class="relative">
+          <label class="block text-[10px] text-slate-500 mb-0.5">Cost/Unit</label>
+          <input type="number" step="0.01" value="10.00" class="line-cost w-full p-1.5 border border-slate-300 rounded text-xs font-mono">
+        </div>
+      `;
+      container.appendChild(row);
+      updateInvoiceTotal();
+
+      row.querySelectorAll("input").forEach(inp => {
+        inp.addEventListener("input", updateInvoiceTotal);
+      });
+    }
+
+    function updateInvoiceTotal() {
+      let total = 0;
+      document.querySelectorAll(".inv-line-row").forEach(row => {
+        const qty = parseFloat(row.querySelector(".line-qty").value) || 0;
+        const cost = parseFloat(row.querySelector(".line-cost").value) || 0;
+        total += (qty * cost);
+      });
+      document.getElementById("invoice-total-display").textContent = `KES ${total.toFixed(2)}`;
+    }
+
+    document.getElementById("form-receive-invoice").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const supplierId = parseInt(document.getElementById("inv-supplier-select").value);
+      const invNumber = document.getElementById("inv-number").value.trim();
+      const invDate = document.getElementById("inv-date").value;
+
+      const items = [];
+      let totalAmount = 0;
+      document.querySelectorAll(".inv-line-row").forEach(row => {
+        const prodId = parseInt(row.querySelector(".line-prod-id").value);
+        const batchNo = row.querySelector(".line-batch-no").value.trim();
+        const expDate = row.querySelector(".line-expiry").value;
+        const qty = parseInt(row.querySelector(".line-qty").value);
+        const unitCost = parseFloat(row.querySelector(".line-cost").value);
+        const lineTotal = qty * unitCost;
+        totalAmount += lineTotal;
+
+        items.push({
+          productId: prodId,
+          batchNumber: batchNo,
+          expiryDate: expDate,
+          quantityReceived: qty,
+          unitCost: unitCost,
+          totalCost: lineTotal
+        });
+      });
+
+      const payload = {
+        supplierId: supplierId,
+        invoiceNumber: invNumber,
+        invoiceDate: invDate,
+        totalAmount: totalAmount,
+        receivedBy: currentUser.fullName,
+        items: items
+      };
+
+      try {
+        const res = await fetch("/api/v1/suppliers/invoices", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          alert("Supplier Invoice recorded and stock inventory updated!");
+          document.getElementById("modal-receive-invoice").classList.add("hidden");
+          loadSuppliersView();
+          loadProducts();
+        }
+      } catch (err) {
+        alert("Failed to submit invoice: " + err.message);
+      }
+    });
+
+    // --- VIEW 5: STAFF & ROLES ---
+    async function loadStaffView() {
+      const tbody = document.getElementById("staff-table-body");
+      tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-slate-400">Loading staff directory...</td></tr>';
+      
+      try {
+        const res = await fetch("/api/v1/users");
+        const users = await res.json();
+        tbody.innerHTML = "";
+
+        users.forEach(u => {
+          let roleBadge = "bg-slate-100 text-slate-800";
+          let roleDesc = "Cashier (Sales Counter Only)";
+          if (u.role.includes("ADMIN") || u.role.includes("MANAGER")) {
+            roleBadge = "bg-purple-100 text-purple-800";
+            roleDesc = "Manager (Full Access, Pricing & Reconciliations)";
+          } else if (u.role.includes("PHARMACIST")) {
+            roleBadge = "bg-blue-100 text-blue-800";
+            roleDesc = "Pharmacist (Dispensing, Stock Take & Invoices)";
+          }
+
+          const tr = document.createElement("tr");
+          tr.className = "hover:bg-slate-50 transition";
+          tr.innerHTML = `
+            <td class="p-3 font-mono font-bold text-slate-700">${u.username}</td>
+            <td class="p-3 font-bold text-slate-800">${u.fullName}</td>
+            <td class="p-3">
+              <span class="${roleBadge} px-2 py-0.5 rounded text-[10px] font-bold mr-1.5">${u.role}</span>
+              <span class="text-[10px] text-slate-500">${roleDesc}</span>
+            </td>
+            <td class="p-3 text-slate-600">${u.phone || '-'}</td>
+            <td class="p-3 text-slate-600">${u.email || '-'}</td>
+            <td class="p-3 text-center"><span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[10px] font-bold">Active PIN</span></td>
+            <td class="p-3 text-center"><span class="w-2 h-2 inline-block rounded-full bg-emerald-500 mr-1"></span>Active</td>
+            <td class="p-3 text-center">
+              <button class="btn-switch-user bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 px-2.5 py-1 rounded text-xs font-bold transition"
+                      data-id="${u.userId}" data-username="${u.username}" data-name="${u.fullName}" data-role="${u.role}">
+                Select User
+              </button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        document.querySelectorAll(".btn-switch-user").forEach(btn => {
+          btn.addEventListener("click", () => {
+            currentUser = {
+              userId: parseInt(btn.getAttribute("data-id")),
+              username: btn.getAttribute("data-username"),
+              fullName: btn.getAttribute("data-name"),
+              role: btn.getAttribute("data-role")
+            };
+            updateUserBadge();
+            alert(`Switched active user to: ${currentUser.fullName} (${currentUser.role})`);
+          });
+        });
+      } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-rose-500">Failed to load staff.</td></tr>';
+      }
+    }
+
+    document.getElementById("btn-add-staff-modal").addEventListener("click", () => {
+      document.getElementById("modal-add-staff").classList.remove("hidden");
+    });
+
+    document.getElementById("form-add-staff").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const payload = {
+        fullName: document.getElementById("staff-fullname").value.trim(),
+        username: document.getElementById("staff-username").value.trim(),
+        role: document.getElementById("staff-role").value,
+        phone: document.getElementById("staff-phone").value.trim(),
+        email: document.getElementById("staff-email").value.trim(),
+        pinCode: document.getElementById("staff-pin").value.trim(),
+        password: document.getElementById("staff-password").value.trim()
+      };
+
+      try {
+        const res = await fetch("/api/v1/users/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          document.getElementById("modal-add-staff").classList.add("hidden");
+          loadStaffView();
+        }
+      } catch (err) {
+        alert("Failed to register staff: " + err.message);
+      }
+    });
+
+    // --- User PIN Switcher ---
+    document.getElementById("nav-user-switch-btn").addEventListener("click", () => {
+      document.getElementById("quick-pin-input").value = "";
+      document.getElementById("modal-pin-switch").classList.remove("hidden");
+    });
+    document.getElementById("mobile-user-badge-btn").addEventListener("click", () => {
+      document.getElementById("quick-pin-input").value = "";
+      document.getElementById("modal-pin-switch").classList.remove("hidden");
+    });
+
+    document.querySelectorAll(".pin-key").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const inp = document.getElementById("quick-pin-input");
+        if (inp.value.length < 4) inp.value += btn.textContent;
+      });
+    });
+
+    document.querySelector(".pin-clear").addEventListener("click", () => {
+      document.getElementById("quick-pin-input").value = "";
+    });
+
+    document.getElementById("btn-submit-pin").addEventListener("click", async () => {
+      const pin = document.getElementById("quick-pin-input").value.trim();
+      if (!pin) return;
+
+      try {
+        const res = await fetch("/api/v1/users/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pinCode: pin })
+        });
+        if (res.ok) {
+          const user = await res.json();
+          currentUser = user;
+          updateUserBadge();
+          document.getElementById("modal-pin-switch").classList.add("hidden");
+        } else {
+          alert("Invalid PIN. Please try again.");
+        }
+      } catch (e) {
+        alert("PIN verification failed.");
+      }
+    });
+
+    function updateUserBadge() {
+      let roleShort = "CASHIER";
+      if (currentUser.role.includes("ADMIN")) roleShort = "MANAGER";
+      if (currentUser.role.includes("PHARMACIST")) roleShort = "PHARMACIST";
+
+      document.getElementById("current-user-display").textContent = `${currentUser.fullName} [${roleShort}]`;
+      document.getElementById("current-user-name-mobile").textContent = `${currentUser.fullName.split(' ')[0]} (${roleShort})`;
+    }
+
+    // --- VIEW 6: REPORTS & Z-REPORT ---
+    async function loadReportsView() {
+      try {
+        const zRes = await fetch("/api/v1/reports/z-report/preview");
+        if (zRes.ok) {
+          const z = await zRes.json();
+          document.getElementById("rep-total-sales").textContent = `KES ${z.grandTotalSales.toFixed(2)}`;
+          document.getElementById("rep-order-count").textContent = `${z.totalOrdersCount} transactions today`;
+          document.getElementById("rep-tax-collected").textContent = `KES ${z.totalTaxAmount.toFixed(2)}`;
+          document.getElementById("rep-gross-profit").textContent = `KES ${z.estimatedGrossProfit.toFixed(2)}`;
+          document.getElementById("rep-profit-margin").textContent = `Gross Margin: ${z.profitMarginPercent.toFixed(1)}%`;
+        }
+
+        const alertRes = await fetch("/api/v1/reports/inventory-alerts");
+        if (alertRes.ok) {
+          const alerts = await alertRes.json();
+          const tbody = document.getElementById("near-expiry-table-body");
+          tbody.innerHTML = "";
+
+          const near = alerts.expiringBatches || [];
+          if (near.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="p-6 text-center text-slate-400">All drug batches are within safe shelf-life (> 60 days).</td></tr>';
+          } else {
+            near.forEach(b => {
+              const tr = document.createElement("tr");
+              tr.className = "hover:bg-amber-50/50";
+              tr.innerHTML = `
+                <td class="p-3 font-bold text-slate-800">${b.productName}</td>
+                <td class="p-3 font-mono text-slate-600">${b.batchNumber}</td>
+                <td class="p-3 font-bold text-rose-600">${b.expiryDate}</td>
+                <td class="p-3 text-center font-bold text-slate-800">${b.quantityAvailable}</td>
+                <td class="p-3 text-slate-500">${b.supplierName || 'Harleys Ltd'}</td>
+              `;
+              tbody.appendChild(tr);
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Failed to load reports", e);
+      }
+    }
+
+    // --- Global Modal Close Handlers ---
+    document.querySelectorAll(".close-modal").forEach(btn => {
+      btn.addEventListener("click", () => {
+        btn.closest(".fixed").classList.add("hidden");
+      });
+    });
+
+    // --- Keyboard Shortcuts (F1 to F10) ---
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "F1") { e.preventDefault(); switchModuleTab("pos"); }
+      if (e.key === "F2") { e.preventDefault(); switchModuleTab("inventory"); }
+      if (e.key === "F3") { e.preventDefault(); switchModuleTab("stocktake"); }
+      if (e.key === "F4") { e.preventDefault(); switchModuleTab("suppliers"); }
+      if (e.key === "F5") { e.preventDefault(); switchModuleTab("staff"); }
+      if (e.key === "F6") { e.preventDefault(); switchModuleTab("reports"); }
+      if (e.key === "F9" && !payCashBtn.disabled) { e.preventDefault(); submitCheckout("CASH"); }
+      if (e.key === "F10" && !payMpesaBtn.disabled) { e.preventDefault(); handleMpesaCheckout(); }
+    });
+
+    // --- Startup Initializer ---
+    window.addEventListener("DOMContentLoaded", () => {
+      loadProducts();
+      updateUserBadge();
+    });
   </script>
 </body>
 </html>
