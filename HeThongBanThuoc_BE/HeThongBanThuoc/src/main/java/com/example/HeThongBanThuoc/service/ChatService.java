@@ -1,14 +1,17 @@
 package com.example.HeThongBanThuoc.service;
+package com.example.HeThongBanThuoc.service;
 
 import com.example.HeThongBanThuoc.model.TinNhan;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.concurrent.DelegatingSecurityContextRunnable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import jakarta.annotation.PostConstruct;
 import javax.sql.DataSource;
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -21,6 +24,8 @@ import java.util.*;
 
 @Service
 public class ChatService {
+
+    private static final Logger log = LoggerFactory.getLogger(ChatService.class);
 
     private final DataSource dataSource;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -56,21 +61,10 @@ public class ChatService {
             Luôn trả lời bằng **tiếng Việt**, thân thiện và dễ hiểu.
             """;
 
-    // --- AUTO CLOSE SESSION TASK ---
-    @PostConstruct
-    public void startAutoCloseScheduler() {
-        new Thread(() -> {
-            while (true) {
-                try {
-                    Thread.sleep(60_000); // kiểm tra mỗi phút
-                    tuDongKetThucPhienKhongHoatDong();
-                } catch (Exception ignored) {
-                }
-            }
-        }, "AutoCloseSessionThread").start();
-    }
-
-    private void tuDongKetThucPhienKhongHoatDong() {
+    // FIX #10: Thay raw Thread bằng @Scheduled — được Spring quản lý lifecycle,
+    // tắt đúng khi app shutdown, không nuốt lỗi im lặng.
+    @Scheduled(fixedDelay = 60_000)
+    public void tuDongKetThucPhienKhongHoatDong() {
         String sql = """
             UPDATE PhienTuVan
             SET TrangThai = 'Đã kết thúc', NgayCapNhat = NOW()
@@ -80,7 +74,8 @@ public class ChatService {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.executeUpdate();
-        } catch (SQLException ignored) {
+        } catch (SQLException e) {
+            log.error("Loi tu dong ket thuc phien: {}", e.getMessage());
         }
     }
 

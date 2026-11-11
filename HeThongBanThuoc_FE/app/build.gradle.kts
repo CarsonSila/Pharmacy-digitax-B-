@@ -6,6 +6,10 @@ android {
     namespace = "com.example.hethongbanthuoc"
     compileSdk = 36
 
+    buildFeatures {
+        buildConfig = true  // FIX #5: Enable BuildConfig for BASE_URL switching
+    }
+
     defaultConfig {
         applicationId = "com.example.hethongbanthuoc"
         minSdk = 24
@@ -17,12 +21,17 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("String", "BASE_URL", "\"http://10.0.2.2:8080/api/\"")
+        }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // FIX #5: Đặt BASE_URL production ở đây khi deploy
+            buildConfigField("String", "BASE_URL", "\"https://your-production-domain.com/api/\"")
         }
     }
     compileOptions {
@@ -38,6 +47,9 @@ dependencies {
     implementation(libs.activity)
     implementation(libs.constraintlayout)
     implementation(libs.swiperefreshlayout)
+
+    // FIX #3: Jetpack Security — EncryptedSharedPreferences
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
@@ -51,13 +63,16 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 
-    // OkHttp for logging - thư viện thực hiện chức năng ghi lại và hiển thị thông tin về các yêu cầu và phản hồi HTTP
+    // OkHttp logging interceptor
     implementation("com.squareup.okhttp3:logging-interceptor:4.9.1")
+    // OkHttp core (explicit version pin)
+    implementation("com.squareup.okhttp3:okhttp:4.9.1")
     // Gson for JSON parsing - thư viện thực hiện chức ănng chuyển đổi giữa JSON và các đối tượng JAVA
     implementation("com.google.code.gson:gson:2.8.8")
 
-    // Bcrypt for password encryption
-    implementation("org.mindrot:jbcrypt:0.4")
+    // FIX #4: Đã xoá jBCrypt — password hashing chỉ được thực hiện ở server.
+    // Client không bao giờ hash mật khẩu trước khi gửi đi.
+    // implementation("org.mindrot:jbcrypt:0.4")  <-- REMOVED
 
     // Glide - load ảnh từ URL
     implementation("com.github.bumptech.glide:glide:4.16.0")

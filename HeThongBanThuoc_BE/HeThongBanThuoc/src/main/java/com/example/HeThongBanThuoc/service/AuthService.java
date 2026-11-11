@@ -1,11 +1,12 @@
 package com.example.HeThongBanThuoc.service;
 
 import com.example.HeThongBanThuoc.security.JwtTokenProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.PostConstruct;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.HashMap;
@@ -13,6 +14,8 @@ import java.util.Map;
 
 @Service
 public class AuthService {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     @Autowired
     private DataSource dataSource;
@@ -23,19 +26,14 @@ public class AuthService {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
-    // Tự động sinh mật khẩu mã hóa cho admin -> chỉ thực hiện cho tài khoản đầu tiên của hệ thống
-    @PostConstruct
-    public void generateAdminPasswordHash() {
-        String rawPassword = "admin01"; // mật khẩu công khai
-        String encoded = passwordEncoder.encode(rawPassword);
-        System.out.println("Mật khẩu mã hóa cho ADMIN là: " + encoded);
-    }
+    // FIX #13: Đã xoá @PostConstruct generateAdminPasswordHash() — nó log thông tin
+    // mã hoá nhạy cảm mỗi lần khởi động. Dùng lệnh một lần để hash mật khẩu admin.
 
-    //  ĐĂNG KÝ NGƯỜI DÙNG
+    // ĐĂNG KÝ NGƯỜI DÙNG
     public String register(String email, String rawPassword, String hoTen, String maVaiTroStr) {
-        int maVaiTro = 2; // Mặc định USER
+        // Mặc định USER, không cho client chọn ADMIN
+        int maVaiTro = 2;
 
-        // Chặn người cố tình chọn ADMIN
         if (maVaiTroStr != null && !maVaiTroStr.isBlank()) {
             try {
                 int temp = Integer.parseInt(maVaiTroStr.trim());
@@ -43,7 +41,7 @@ public class AuthService {
                     throw new RuntimeException("Bạn không thể tự đăng ký tài khoản ADMIN!");
                 }
             } catch (NumberFormatException e) {
-                System.err.println("Giá trị MaVaiTro không hợp lệ, gán mặc định USER.");
+                log.warn("Giá trị MaVaiTro không hợp lệ, gán mặc định USER.");
             }
         }
 
@@ -51,7 +49,6 @@ public class AuthService {
         String checkSql = "SELECT 1 FROM NguoiDung WHERE Email = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement checkPs = conn.prepareStatement(checkSql)) {
-
             checkPs.setString(1, email);
             try (ResultSet rs = checkPs.executeQuery()) {
                 if (rs.next()) {
@@ -63,22 +60,18 @@ public class AuthService {
         }
 
         // Thêm mới người dùng
-        String sql = """
-                INSERT INTO NguoiDung (MaVaiTro, Email, PasswordHash, HoTen, TrangThai, NgayTao)
-                VALUES (?, ?, ?, ?, 1, NOW())
-                """;
+        String sql = "INSERT INTO NguoiDung (MaVaiTro, Email, PasswordHash, HoTen, TrangThai, NgayTao) " +
+                     "VALUES (?, ?, ?, ?, 1, NOW())";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
             ps.setInt(1, maVaiTro);
             ps.setString(2, email);
             ps.setString(3, passwordEncoder.encode(rawPassword));
             ps.setString(4, hoTen);
             ps.executeUpdate();
-
             try (ResultSet rs = ps.getGeneratedKeys()) {
                 if (rs.next()) {
-                    System.out.println("Đăng ký thành công: " + email + " (Vai trò USER)");
+                    log.info("Dang ky thanh cong: {} (Vai tro USER)", email);
                     return email;
                 }
             }
@@ -89,9 +82,10 @@ public class AuthService {
         return email;
     }
 
-    // ĐĂNG NHẬP NGƯỜI DÙNG - Updated với Refresh Token
+    // ĐĂNG NHẬP NGƯỜI DÙNG
     public Map<String, Object> login(String email, String rawPassword) {
-        String sql = "SELECT MaNguoiDung, PasswordHash, MaVaiTro FROM NguoiDung WHERE Email = ?";
+        // FIX #6: thêm AND TrangThai = 1 để chặn tài khoản bị khóa đăng nhập
+        String sql = "SELECT MaNguoiDung, PasswordHash, MaVaiTro FROM NguoiDung WHERE Email = ? AND TrangThai = 1";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -100,39 +94,28 @@ public class AuthService {
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) {
+                    // Thông báo chung — không tiết lộ tài khoản có tồn tại hay không
                     throw new RuntimeException("Sai email hoặc mật khẩu");
                 }
 
                 int userId = rs.getInt("MaNguoiDung");
                 String hash = rs.getString("PasswordHash");
-
                 Integer maVaiTroObj = (Integer) rs.getObject("MaVaiTro");
-                int maVaiTro = (maVaiTroObj != null) ? maVaiTroObj.intValue() : 2;
+                int maVaiTro = (maVaiTroObj != null) ? maVaiTroObj : 2;
 
                 if (!passwordEncoder.matches(rawPassword, hash)) {
                     throw new RuntimeException("Sai email hoặc mật khẩu");
                 }
 
-                // Xác định vai trò
-                String roleName;
-                if (maVaiTro == 1) {
-                    roleName = "ADMIN";
-                } else if (maVaiTro == 2) {
-                    roleName = "USER";
-                } else {
-                    roleName = "USER";
-                }
+                String roleName = (maVaiTro == 1) ? "ADMIN" : "USER";
 
-                // Sinh Access Token và Refresh Token
-                String accessToken = jwtTokenProvider.generateToken(email, roleName, userId);
+                String accessToken  = jwtTokenProvider.generateToken(email, roleName, userId);
                 String refreshToken = jwtTokenProvider.generateRefreshToken(email);
 
-                // Lưu refresh token vào database
                 saveRefreshToken(userId, refreshToken);
 
-                System.out.println("Token tạo cho " + email + " | Role: " + roleName);
+                log.info("Login successful for: {} | Role: {}", email, roleName);
 
-                // Trả kết quả về dạng Map
                 Map<String, Object> result = new HashMap<>();
                 result.put("token", accessToken);
                 result.put("refreshToken", refreshToken);
@@ -150,37 +133,28 @@ public class AuthService {
 
     // LƯU REFRESH TOKEN VÀO DATABASE
     public void saveRefreshToken(int userId, String refreshToken) {
-        String sql = "UPDATE NguoiDung SET RefreshToken = ?, RefreshTokenExpiry = DATE_ADD(NOW(), INTERVAL 7 DAY) WHERE MaNguoiDung = ?";
-
+        String sql = "UPDATE NguoiDung SET RefreshToken = ?, " +
+                     "RefreshTokenExpiry = DATE_ADD(NOW(), INTERVAL 7 DAY) WHERE MaNguoiDung = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
             ps.setString(1, refreshToken);
             ps.setInt(2, userId);
             ps.executeUpdate();
-
-            System.out.println("Refresh token saved for userId: " + userId);
-
         } catch (SQLException e) {
-            System.err.println("Lỗi khi lưu refresh token: " + e.getMessage());
+            log.error("Loi khi luu refresh token userId={}: {}", userId, e.getMessage());
         }
     }
 
     // KIỂM TRA REFRESH TOKEN HỢP LỆ
     public boolean isRefreshTokenValid(int userId, String refreshToken) {
         String sql = "SELECT RefreshToken, RefreshTokenExpiry FROM NguoiDung WHERE MaNguoiDung = ?";
-
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
             ps.setInt(1, userId);
-
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     String storedToken = rs.getString("RefreshToken");
-                    Timestamp expiry = rs.getTimestamp("RefreshTokenExpiry");
-
-                    // Kiểm tra token trùng khớp và chưa hết hạn
+                    Timestamp expiry   = rs.getTimestamp("RefreshTokenExpiry");
                     if (storedToken != null && storedToken.equals(refreshToken)) {
                         if (expiry != null && expiry.after(new Timestamp(System.currentTimeMillis()))) {
                             return true;
@@ -189,55 +163,44 @@ public class AuthService {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Lỗi khi kiểm tra refresh token: " + e.getMessage());
+            log.error("Loi kiem tra refresh token userId={}: {}", userId, e.getMessage());
         }
-
         return false;
     }
 
     // XÓA REFRESH TOKEN (KHI LOGOUT)
     public void revokeRefreshToken(int userId) {
-        String sql = "UPDATE NguoiDung SET RefreshToken = NULL, RefreshTokenExpiry = NULL WHERE MaNguoiDung = ?";
-
+        String sql = "UPDATE NguoiDung SET RefreshToken = NULL, RefreshTokenExpiry = NULL " +
+                     "WHERE MaNguoiDung = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
             ps.setInt(1, userId);
             ps.executeUpdate();
-
-            System.out.println("Refresh token revoked for userId: " + userId);
-
+            log.info("Refresh token revoked for userId: {}", userId);
         } catch (SQLException e) {
-            System.err.println("Lỗi khi xóa refresh token: " + e.getMessage());
+            log.error("Loi xoa refresh token userId={}: {}", userId, e.getMessage());
         }
     }
 
     // LẤY THÔNG TIN USER TỪ EMAIL
     public Map<String, Object> getUserByEmail(String email) {
         String sql = "SELECT MaNguoiDung, MaVaiTro, HoTen FROM NguoiDung WHERE Email = ?";
-
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-
             ps.setString(1, email);
-
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     Map<String, Object> user = new HashMap<>();
                     user.put("userId", rs.getInt("MaNguoiDung"));
-
                     int maVaiTro = rs.getInt("MaVaiTro");
-                    String roleName = (maVaiTro == 1) ? "ADMIN" : "USER";
-                    user.put("role", roleName);
+                    user.put("role", (maVaiTro == 1) ? "ADMIN" : "USER");
                     user.put("hoTen", rs.getString("HoTen"));
-
                     return user;
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Lỗi khi lấy thông tin user: " + e.getMessage());
+            log.error("Loi lay thong tin user email={}: {}", email, e.getMessage());
         }
-
         return null;
     }
 }

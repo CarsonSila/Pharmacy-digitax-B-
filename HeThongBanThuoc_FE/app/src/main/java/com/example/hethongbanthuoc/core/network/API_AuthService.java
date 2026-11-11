@@ -45,6 +45,18 @@ public interface API_AuthService {
     @POST("auth/login")
     Call<Map<String, Object>> login(@Body Map<String, String> body);
 
+    // 2b. API - Làm mới access token bằng refresh token (FIX #23)
+    @POST("auth/refresh")
+    Call<Map<String, Object>> refresh(@Body Map<String, String> body);
+
+    // 2c. API - Đăng xuất (thu hồi refresh token) (FIX #22)
+    @POST("auth/logout")
+    Call<Map<String, String>> logout(@Header("Authorization") String token);
+
+    // 2d. API - Xác thực token còn hợp lệ không
+    @GET("auth/validate")
+    Call<ResponseBody> validateToken(@Header("Authorization") String token);
+
     // 3. API - Quên mật khẩu - Gửi OTP
     @POST("auth/forgot-password")
     Call<Map<String, String>> forgotPassword(@Body Map<String, String> request);

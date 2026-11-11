@@ -24,19 +24,25 @@ public class OrderService {
     /* API ĐỌC/XEM ĐƠN HÀNG
     /*
      * Lấy danh sách đơn hàng theo người dùng và trạng thái
-     * @param maNguoiDung ID người dùng
-     * @param trangThai Trạng thái đơn hàng ("Tất cả", "Đang xử lý", "Đang giao", "Đã giao", "Đã hủy")
-     * @return Danh sách đơn hàng kèm chi tiết sản phẩm
+     * FIX #9: Dùng prepared statement thay vì nối chuỗi SQL để chống SQL injection
      */
     public List<DonHangChiTiet> layDanhSachDonHang(int maNguoiDung, String trangThai) {
         List<DonHangChiTiet> danhSachDonHang = new ArrayList<>();
 
-        String sqlDonHang = buildQueryDonHang(trangThai);
+        boolean filterByStatus = trangThai != null && !trangThai.equals("Tất cả");
+
+        String sql = "SELECT MaDonHang, MaNguoiDung, TongTien, GiamGia, TienPhaiTra, TrangThai, NgayTao " +
+                     "FROM DonHang WHERE MaNguoiDung = ? " +
+                     (filterByStatus ? "AND TrangThai = ? " : "") +
+                     "ORDER BY NgayTao DESC";
 
         try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sqlDonHang)) {
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, maNguoiDung);
+            if (filterByStatus) {
+                ps.setString(2, trangThai);
+            }
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -47,15 +53,12 @@ public class OrderService {
                     donHang.setTongTien(rs.getBigDecimal("TongTien"));
                     donHang.setGiamGia(rs.getBigDecimal("GiamGia"));
                     donHang.setTienPhaiTra(rs.getBigDecimal("TienPhaiTra"));
-
                     danhSachDonHang.add(donHang);
                 }
             }
 
-            // Load chi tiết sản phẩm cho từng đơn hàng
             for (DonHangChiTiet donHang : danhSachDonHang) {
-                List<ChiTietDonHang> chiTietList = layChiTietDonHang(donHang.getMaDonHang());
-                donHang.setDanhSachSanPham(chiTietList);
+                donHang.setDanhSachSanPham(layChiTietDonHang(donHang.getMaDonHang()));
             }
 
         } catch (SQLException e) {
@@ -109,21 +112,8 @@ public class OrderService {
     }
 
     /*
-     * Build câu query SQL theo trạng thái
+     * Build câu query SQL theo trạng thái — REMOVED (replaced with parameterized query above)
      */
-    private String buildQueryDonHang(String trangThai) {
-        String baseQuery = "SELECT MaDonHang, MaNguoiDung, TongTien, GiamGia, TienPhaiTra, TrangThai, NgayTao " +
-                "FROM DonHang " +
-                "WHERE MaNguoiDung = ? ";
-
-        if (trangThai != null && !trangThai.equals("Tất cả")) {
-            baseQuery += "AND TrangThai = '" + trangThai + "' ";
-        }
-
-        baseQuery += "ORDER BY NgayTao DESC";
-
-        return baseQuery;
-    }
 
     /*
      * Lấy thống kê số lượng đơn hàng theo trạng thái
@@ -247,7 +237,38 @@ public class OrderService {
         Connection conn = null;
         try {
             conn = dataSource.getConnection();
-            conn.setAutoCommit(false); // Bắt đầu transaction
+            conn.setAutoCommit(false);
+
+            // FIX #21: Kiểm tra tồn kho và trạng thái sản phẩm trước khi tạo đơn hàng
+            if (donHang.getChiTietDonHangList() != null) {
+                for (ChiTietDonHang ct : donHang.getChiTietDonHangList()) {
+                    String stockSql = "SELECT sp.TrangThaiBan, COALESCE(tk.SoLuong, 0) AS SoLuong " +
+                            "FROM san_pham sp " +
+                            "LEFT JOIN TonKho tk ON sp.MaSanPham = tk.MaSanPham " +
+                            "WHERE sp.MaSanPham = ?";
+                    try (PreparedStatement stockPs = conn.prepareStatement(stockSql)) {
+                        stockPs.setInt(1, ct.getMaSanPham());
+                        try (ResultSet stockRs = stockPs.executeQuery()) {
+                            if (!stockRs.next()) {
+                                conn.rollback();
+                                throw new RuntimeException("Sản phẩm #" + ct.getMaSanPham() + " không tồn tại");
+                            }
+                            int trangThaiBan = stockRs.getInt("TrangThaiBan");
+                            int soLuongTon   = stockRs.getInt("SoLuong");
+
+                            if (trangThaiBan == 0) {
+                                conn.rollback();
+                                throw new RuntimeException("Sản phẩm #" + ct.getMaSanPham() + " đã ngừng bán");
+                            }
+                            if (soLuongTon < ct.getSoLuong()) {
+                                conn.rollback();
+                                throw new RuntimeException("Sản phẩm #" + ct.getMaSanPham() +
+                                        " không đủ tồn kho (còn " + soLuongTon + ", yêu cầu " + ct.getSoLuong() + ")");
+                            }
+                        }
+                    }
+                }
+            }
 
             // 1. Tạo đơn hàng
             String sql = "INSERT INTO DonHang (MaNguoiDung, MaDiaChi, MaGiamGia, TongTien, GiamGia, TienPhaiTra, TrangThai) " +
@@ -286,6 +307,19 @@ public class OrderService {
                         psChiTiet.addBatch();
                     }
                     psChiTiet.executeBatch();
+                }
+
+                // FIX #21: Trừ tồn kho sau khi thêm chi tiết đơn hàng
+                String deductSql = "UPDATE TonKho SET SoLuong = SoLuong - ? " +
+                                   "WHERE MaSanPham = ? AND SoLuong >= ?";
+                try (PreparedStatement deductPs = conn.prepareStatement(deductSql)) {
+                    for (ChiTietDonHang chiTiet : donHang.getChiTietDonHangList()) {
+                        deductPs.setInt(1, chiTiet.getSoLuong());
+                        deductPs.setInt(2, chiTiet.getMaSanPham());
+                        deductPs.setInt(3, chiTiet.getSoLuong());
+                        deductPs.addBatch();
+                    }
+                    deductPs.executeBatch();
                 }
             }
 

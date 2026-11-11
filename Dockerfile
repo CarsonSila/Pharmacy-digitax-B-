@@ -1,38 +1,60 @@
-# Multi-stage build for PharmaCore Tax-Compliant POS Backend
-FROM eclipse-temurin:21-jdk-jammy AS builder
+# ─────────────────────────────────────────────────────────
+# Stage 1: Build — compile the Spring Boot JAR
+# ─────────────────────────────────────────────────────────
+FROM eclipse-temurin:17-jdk-jammy AS builder
 WORKDIR /app
 
-# Copy gradle wrapper and configurations
-COPY gradlew .
-COPY gradle ./gradle
-COPY build.gradle .
-COPY settings.gradle .
-
-# Grant execute rights to gradlew
+# Copy Gradle wrapper first (cached layer — only re-downloaded when changed)
+COPY HeThongBanThuoc_BE/HeThongBanThuoc/gradlew .
+COPY HeThongBanThuoc_BE/HeThongBanThuoc/gradle ./gradle
 RUN chmod +x ./gradlew
 
-# Copy source code and database scripts
-COPY src ./src
+# Copy build scripts (another cached layer)
+COPY HeThongBanThuoc_BE/HeThongBanThuoc/build.gradle .
+COPY HeThongBanThuoc_BE/HeThongBanThuoc/settings.gradle .
 
-# Build production JAR (skipping tests)
+# Pre-download dependencies (cached unless build.gradle changes)
+RUN ./gradlew dependencies --no-daemon --quiet || true
+
+# Copy source code
+COPY HeThongBanThuoc_BE/HeThongBanThuoc/src ./src
+
+# Build the production JAR (skip tests — run tests in CI before this step)
 RUN ./gradlew bootJar --no-daemon -x test
 
-# Runtime stage
-FROM eclipse-temurin:21-jre-jammy
+# ─────────────────────────────────────────────────────────
+# Stage 2: Runtime — minimal JRE image
+# ─────────────────────────────────────────────────────────
+FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 
-# Set non-root user for security
-RUN groupadd -r pharmacore && useradd -r -g pharmacore pharmacore
+# Create non-root user for security
+RUN groupadd -r pharmacore && useradd -r -g pharmacore -m pharmacore
 
-# Copy executable jar from builder stage
+# Create uploads directory and set ownership
+RUN mkdir -p /app/uploads && chown pharmacore:pharmacore /app/uploads
+
+# Copy the JAR from builder stage
 COPY --from=builder /app/build/libs/*.jar app.jar
+RUN chown pharmacore:pharmacore app.jar
 
+# Switch to non-root user
 USER pharmacore
+
+# Expose application port
 EXPOSE 8080
 
-ENV SPRING_PROFILES_ACTIVE=prod
-ENV DIGITAX_MOCK_MODE=true
-ENV MPESA_MOCK_MODE=true
+# Health check — Spring Boot Actuator endpoint
+# (Add spring-boot-starter-actuator to build.gradle to enable this)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:8080/actuator/health || exit 1
 
-ENTRYPOINT ["java", "-Djava.security.egd=file:/dev/./urandom", "-jar", "app.jar"]
-
+# JVM tuning for containers:
+#   -XX:+UseContainerSupport      — respect Docker memory limits
+#   -XX:MaxRAMPercentage=75.0     — use 75% of container RAM for heap
+#   -Djava.security.egd           — faster SecureRandom (important for JWT)
+ENTRYPOINT ["java", \
+  "-XX:+UseContainerSupport", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-Djava.security.egd=file:/dev/./urandom", \
+  "-jar", "app.jar"]

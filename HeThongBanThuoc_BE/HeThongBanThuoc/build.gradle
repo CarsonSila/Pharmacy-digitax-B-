@@ -22,6 +22,9 @@ dependencies {
     // Spring Boot Web
     implementation 'org.springframework.boot:spring-boot-starter-web'
 
+    // Spring Boot Actuator — health check endpoint (/actuator/health) used by Docker + load balancers
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
     // Spring Security
     implementation 'org.springframework.boot:spring-boot-starter-security'
 

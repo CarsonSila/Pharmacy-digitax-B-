@@ -2,9 +2,13 @@ package com.example.HeThongBanThuoc.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 import java.util.Map;
@@ -12,11 +16,14 @@ import java.util.Map;
 @Component
 public class JwtTokenProvider {
 
-    // Khóa bí mật dùng để ký JWT (phải đủ dài, ít nhất 32 ký tự)
-    private static final String SECRET = "my-super-strong-secret-key-256-bit-length!@#123456";
+    private static final Logger log = LoggerFactory.getLogger(JwtTokenProvider.class);
 
-    // Tạo key từ chuỗi SECRET dùng thuật toán HMAC-SHA256
-    private static final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
+    // Đọc secret từ biến môi trường / application.properties — KHÔNG hardcode
+    @Value("${jwt.secret}")
+    private String jwtSecret;
+
+    // Signing key — được khởi tạo sau khi @Value được inject
+    private Key key;
 
     // Thời gian hết hạn Access Token: 1 giờ (3600000 ms)
     @Value("${jwt.access-token-expiration:3600000}")
@@ -26,26 +33,37 @@ public class JwtTokenProvider {
     @Value("${jwt.refresh-token-expiration:604800000}")
     private long refreshTokenExpiration;
 
+    @PostConstruct
+    public void init() {
+        if (jwtSecret == null || jwtSecret.length() < 32) {
+            throw new IllegalStateException(
+                "JWT secret (jwt.secret) phải có ít nhất 32 ký tự. " +
+                "Hãy đặt biến môi trường JWT_SECRET với giá trị ngẫu nhiên dài."
+            );
+        }
+        this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        log.info("JwtTokenProvider đã khởi tạo thành công.");
+    }
+
     /**
      * Tạo Access Token (thời gian sống ngắn - 1 giờ)
      * Chứa: email, role, userId
      */
     public String generateToken(String email, String role, Integer userId) {
-        Date now = new Date(); // thời điểm hiện tại
-        Date expiryDate = new Date(now.getTime() + accessTokenExpiration); // thời điểm hết hạn
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + accessTokenExpiration);
 
-        // Xây dựng JWT
         return Jwts.builder()
-                .setSubject(email) // đặt subject là email
+                .setSubject(email)
                 .addClaims(Map.of(
-                        "role", role,     // thêm thông tin role vào payload
-                        "userId", userId , // thêm userId vào payload
+                        "role", role,
+                        "userId", userId,
                         "type", "access"
                 ))
-                .setIssuedAt(now)          // thời gian phát hành
-                .setExpiration(expiryDate) // thời gian hết hạn
-                .signWith(key, SignatureAlgorithm.HS256) // ký token bằng HS256 và key
-                .compact(); // tạo chuỗi token hoàn chỉnh
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
     }
 
     /**
@@ -67,36 +85,35 @@ public class JwtTokenProvider {
 
     // Lấy email từ token
     public String getEmailFromToken(String token) {
-        return parseAllClaims(token).getSubject(); // subject trong token là email
+        return parseAllClaims(token).getSubject();
     }
 
     // Lấy role từ token
     public String getRoleFromToken(String token) {
-        return parseAllClaims(token).get("role", String.class); // đọc claim "role"
+        return parseAllClaims(token).get("role", String.class);
     }
 
     // Lấy userId từ token
     public Integer getUserIdFromToken(String token) {
-        return parseAllClaims(token).get("userId", Integer.class); // đọc claim "userId"
+        return parseAllClaims(token).get("userId", Integer.class);
     }
 
-    // Parse tất cả claims từ token (bao gồm subject, role, userId, expiration...)
+    // Parse tất cả claims từ token
     private Claims parseAllClaims(String token) {
         return Jwts.parserBuilder()
-                .setSigningKey(key) // sử dụng key để xác thực chữ ký
+                .setSigningKey(key)
                 .build()
-                .parseClaimsJws(token) // parse token
-                .getBody(); // trả về payload (claims)
+                .parseClaimsJws(token)
+                .getBody();
     }
 
     // Kiểm tra token có hợp lệ không
     public boolean validateToken(String token) {
         try {
-            parseAllClaims(token); // nếu parse thành công → token hợp lệ
+            parseAllClaims(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
-            // Nếu parse lỗi hoặc token bị thay đổi → không hợp lệ
-            System.out.println("JWT không hợp lệ: " + e.getMessage());
+            log.warn("JWT không hợp lệ: {}", e.getMessage());
             return false;
         }
     }

@@ -43,31 +43,27 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        // B1: Ánh xạ các view giao diện
-        edtEmail = findViewById(R.id.edtEmail);
-        edtPassword = findViewById(R.id.edtPassword);
-        btnLogin = findViewById(R.id.btnLogin);
+        edtEmail         = findViewById(R.id.edtEmail);
+        edtPassword      = findViewById(R.id.edtPassword);
+        btnLogin         = findViewById(R.id.btnLogin);
         ivTogglePassword = findViewById(R.id.ivTogglePassword);
-        cbRememberMe = findViewById(R.id.cbRememberMe);
+        cbRememberMe     = findViewById(R.id.cbRememberMe);
 
-        // B2: Khởi tạo Retrofit API service
         apiService = API_RetrofitClient.getRetrofitInstance(this).create(API_AuthService.class);
 
-        // B3: Kiểm tra trạng thái RememberMe và token cũ
+        // Khôi phục email nếu RememberMe bật
         if (TokenManager.getRememberMe(this)) {
-            // Gán lại thông tin đăng nhập đã lưu
             edtEmail.setText(TokenManager.getSavedEmail(this));
-            edtPassword.setText(TokenManager.getSavedPassword(this));
             cbRememberMe.setChecked(true);
 
-            // Kiểm tra token còn hợp lệ hay không
-            String token = TokenManager.getToken(this);
-            if (token != null && !token.isEmpty()) {
-                validateToken(token);
+            // FIX #23: thử tự động đăng nhập lại bằng refreshToken thay vì mật khẩu
+            String refreshToken = TokenManager.getRefreshToken(this);
+            if (refreshToken != null && !refreshToken.isEmpty()) {
+                tryRefreshToken(refreshToken);
             }
         }
 
-        // B4: Xử lý ẩn/hiện mật khẩu
+        // Ẩn/hiện mật khẩu
         ivTogglePassword.setOnClickListener(v -> {
             if (isPasswordVisible) {
                 edtPassword.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
@@ -80,91 +76,88 @@ public class LoginActivity extends AppCompatActivity {
             edtPassword.setSelection(edtPassword.length());
         });
 
-        // B5: Chuyển sang trang đăng ký
         findViewById(R.id.tvLogin).setOnClickListener(v ->
                 startActivity(new Intent(this, RegisterActivity.class)));
 
-        // B6: Chuyển sang trang quên mật khẩu
         findViewById(R.id.tvForgotPassword).setOnClickListener(v ->
                 startActivity(new Intent(this, ForgotPasswwordActivity.class)));
 
-        // B7: Xử lý khi nhấn nút Đăng nhập
         btnLogin.setOnClickListener(v -> loginUser());
     }
 
-    // Hàm kiểm tra token (auto-login)
-    private void validateToken(String token) {
-        // B8: Gửi yêu cầu xác thực token lên server
-        apiService.validateToken("Bearer " + token).enqueue(new Callback<ResponseBody>() {
+    /**
+     * FIX #23: Tự động làm mới token khi khởi động (thay vì dùng mật khẩu đã lưu).
+     */
+    private void tryRefreshToken(String refreshToken) {
+        Map<String, String> body = new HashMap<>();
+        body.put("refreshToken", refreshToken);
+
+        apiService.refresh(body).enqueue(new Callback<Map<String, Object>>() {
             @Override
-            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                // B9: Token hợp lệ → chuyển vào Home
-                if (response.isSuccessful()) {
-                    String role = TokenManager.getRole(LoginActivity.this);
-                    Intent intent;
-                    if ("ADMIN".equalsIgnoreCase(role)) {
-                        intent = new Intent(LoginActivity.this, Admin_HomePageActivity.class);
-                    } else {
-                        intent = new Intent(LoginActivity.this, Main_HomePageActivity.class);
+            public void onResponse(Call<Map<String, Object>> call, Response<Map<String, Object>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    Map<String, Object> respBody = response.body();
+                    String newToken        = (String) respBody.get("token");
+                    String newRefreshToken = (String) respBody.get("refreshToken");
+
+                    TokenManager.saveToken(LoginActivity.this, newToken);
+                    if (newRefreshToken != null) {
+                        TokenManager.saveRefreshToken(LoginActivity.this, newRefreshToken);
                     }
-                    startActivity(intent);
-                    finish();
+
+                    navigateToHome();
                 } else {
-                    // B10: Token hết hạn → xóa phiên đăng nhập
+                    // Refresh token hết hạn → xoá phiên, yêu cầu đăng nhập lại
                     TokenManager.clearSession(LoginActivity.this);
                 }
             }
 
             @Override
-            public void onFailure(Call<ResponseBody> call, Throwable t) {
-                // B11: Xử lý khi lỗi kết nối API
-                Toast.makeText(LoginActivity.this, "Lỗi kiểm tra token: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            public void onFailure(Call<Map<String, Object>> call, Throwable t) {
+                // Lỗi mạng — không xoá phiên, chờ user đăng nhập thủ công
             }
         });
     }
 
-    // Hàm xử lý đăng nhập
     private void loginUser() {
-        // B12: Lấy dữ liệu từ EditText
-        String email = edtEmail.getText().toString().trim();
+        String email    = edtEmail.getText().toString().trim();
         String password = edtPassword.getText().toString().trim();
 
-        // B13: Kiểm tra dữ liệu hợp lệ
         if (email.isEmpty() || password.isEmpty()) {
             Toast.makeText(this, "Vui lòng nhập email và mật khẩu", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // B14. Kiểm tra định dạng email
-        if (!email.matches("[a-zA-Z0-9._-]+@gmail\\.com")) {
-            Toast.makeText(this, "Vui lòng nhập email hợp lệ (định dạng @gmail.com)", Toast.LENGTH_SHORT).show();
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            Toast.makeText(this, "Email không hợp lệ", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // B15: Chuẩn bị request body
         Map<String, String> requestBody = new HashMap<>();
         requestBody.put("email", email);
         requestBody.put("password", password);
 
-        // B16: Gửi yêu cầu đăng nhập lên server
-        Call<Map<String, Object>> call = apiService.login(requestBody);
-
-        call.enqueue(new Callback<Map<String, Object>>() {
+        apiService.login(requestBody).enqueue(new Callback<Map<String, Object>>() {
             @Override
             public void onResponse(Call<Map<String, Object>> call, Response<Map<String, Object>> response) {
-                // B16: Xử lý phản hồi từ server
                 if (response.isSuccessful() && response.body() != null) {
                     Map<String, Object> body = response.body();
-                    String token = (String) body.get("token");
-                    String role = (String) body.get("role");
-                    Object userIdObj = body.get("userId");
+                    String token        = (String) body.get("token");
+                    String refreshToken = (String) body.get("refreshToken");
+                    String role         = (String) body.get("role");
+                    Object userIdObj    = body.get("userId");
 
-                    // B17: Lưu token, vai trò và tùy chọn RememberMe
                     TokenManager.saveToken(LoginActivity.this, token);
                     TokenManager.saveRole(LoginActivity.this, role);
-                    TokenManager.saveRememberMe(LoginActivity.this, cbRememberMe.isChecked(), email, password);
 
-                    // B18: Lưu UserId (nếu có)
+                    // FIX #23: Lưu refreshToken để tự động đăng nhập lại
+                    if (refreshToken != null) {
+                        TokenManager.saveRefreshToken(LoginActivity.this, refreshToken);
+                    }
+
+                    // FIX #3: saveRememberMe không còn nhận password
+                    TokenManager.saveRememberMe(LoginActivity.this, cbRememberMe.isChecked(), email);
+
                     if (userIdObj != null) {
                         try {
                             int userId = (int) Double.parseDouble(userIdObj.toString());
@@ -172,24 +165,26 @@ public class LoginActivity extends AppCompatActivity {
                         } catch (Exception ignored) {}
                     }
 
-                    // B19: Chuyển hướng sau khi đăng nhập thành công
                     Toast.makeText(LoginActivity.this, "Đăng nhập thành công", Toast.LENGTH_SHORT).show();
-                    Intent intent = "ADMIN".equalsIgnoreCase(role)
-                            ? new Intent(LoginActivity.this, Admin_HomePageActivity.class)
-                            : new Intent(LoginActivity.this, Main_HomePageActivity.class);
-                    startActivity(intent);
-                    finish();
+                    navigateToHome();
                 } else {
-                    // B20: Sai thông tin đăng nhập
                     Toast.makeText(LoginActivity.this, "Đăng nhập thất bại", Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(Call<Map<String, Object>> call, Throwable t) {
-                // B21: Lỗi kết nối hoặc server không phản hồi
                 Toast.makeText(LoginActivity.this, "Không thể kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void navigateToHome() {
+        String role = TokenManager.getRole(this);
+        Intent intent = "ADMIN".equalsIgnoreCase(role)
+                ? new Intent(this, Admin_HomePageActivity.class)
+                : new Intent(this, Main_HomePageActivity.class);
+        startActivity(intent);
+        finish();
     }
 }

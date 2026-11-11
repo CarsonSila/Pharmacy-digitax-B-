@@ -38,6 +38,13 @@ rebel.xml
 Thumbs.db
 .DS_Store
 
+### Environment / Secrets — NEVER commit these ###
+.env
+*.env
+HeThongBanThuoc_BE/**/.env
+HeThongBanThuoc_BE/**/application-prod.properties
+HeThongBanThuoc_BE/**/application-local.properties
+
 ### Reference Archives ###
 reference/
 *.log

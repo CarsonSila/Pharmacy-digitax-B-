@@ -1,0 +1,28 @@
+version: "3.8"
+# PharmaCore LOCAL DEV — only the database in Docker
+# Usage: docker compose -f docker-compose.dev.yml up -d
+# Then run Spring Boot from IntelliJ/VS Code normally.
+
+services:
+  pharmacore-db:
+    image: mysql:8.0
+    container_name: pharmacore-mysql-dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: devpassword
+      MYSQL_DATABASE: he_thong_ban_thuoc
+      MYSQL_USER: devuser
+      MYSQL_PASSWORD: devpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_dev_data:/var/lib/mysql
+      - ./HeThongBanThuoc_DB.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  mysql_dev_data:

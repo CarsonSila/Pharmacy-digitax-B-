@@ -267,6 +267,11 @@
               <span>M-Pesa (F10)</span>
             </button>
           </div>
+          <!-- Insurance / Co-pay Button -->
+          <button id="pay-insurance-btn" disabled class="mt-2 w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl shadow transition flex items-center justify-center space-x-1.5">
+            <i class="fa-solid fa-shield-heart"></i>
+            <span>SHA / Insurance Co-pay</span>
+          </button>
         </div>
       </section>
     </div>
@@ -579,6 +584,32 @@
               </tr>
             </thead>
             <tbody id="near-expiry-table-body" class="divide-y divide-slate-100">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Low Stock / Reorder Alerts Table -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-3 bg-rose-50 border-b border-rose-200 flex items-center justify-between">
+            <h3 class="font-bold text-xs text-rose-900 flex items-center gap-1.5">
+              <i class="fa-solid fa-boxes-packing text-rose-600"></i>
+              Low Stock & Reorder Alerts (Below Threshold)
+            </h3>
+            <span class="text-[11px] text-rose-700 font-semibold" id="rep-lowstock-count">0 Items</span>
+          </div>
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
+              <tr>
+                <th class="p-3">Medication</th>
+                <th class="p-3">SKU</th>
+                <th class="p-3 text-center">Current Stock</th>
+                <th class="p-3 text-center">Reorder Level</th>
+                <th class="p-3 text-center">Status</th>
+                <th class="p-3 text-center">Quick Action</th>
+              </tr>
+            </thead>
+            <tbody id="low-stock-table-body" class="divide-y divide-slate-100">
               <!-- Populated dynamically -->
             </tbody>
           </table>
@@ -982,6 +1013,95 @@
   </div>
 
   <!-- ========================================================================= -->
+  <!-- MODAL: SHA / INSURANCE CO-PAY CHECKOUT -->
+  <!-- ========================================================================= -->
+  <div id="modal-insurance" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200">
+      <div class="bg-blue-700 text-white p-4 flex items-center justify-between">
+        <h3 class="font-bold text-sm flex items-center gap-2">
+          <i class="fa-solid fa-shield-heart text-blue-200"></i>
+          <span>SHA / Insurance Co-pay Checkout</span>
+        </h3>
+        <button class="close-modal text-white/80 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-4 space-y-3 text-xs">
+        <!-- Total -->
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 flex justify-between items-center">
+          <span class="font-bold text-slate-700">Total Bill</span>
+          <span id="ins-total-display" class="text-lg font-black text-blue-800 font-mono">KES 0.00</span>
+        </div>
+        <!-- Scheme -->
+        <div>
+          <label class="block font-bold text-slate-600 mb-1">Insurance / Medical Scheme *</label>
+          <select id="ins-scheme" class="w-full p-2 border border-slate-300 rounded bg-white font-bold text-slate-700">
+            <option value="SHA">SHA (Social Health Authority — formerly NHIF)</option>
+            <option value="AAR">AAR Health Services</option>
+            <option value="JUBILEE">Jubilee Health Insurance</option>
+            <option value="RESOLUTION">Resolution Health</option>
+            <option value="BRITAM">Britam Health Insurance</option>
+            <option value="UAP">UAP Old Mutual Health</option>
+            <option value="MADISON">Madison Insurance</option>
+            <option value="CORPORATE">Corporate / Employer Scheme</option>
+            <option value="OTHER">Other Insurance</option>
+          </select>
+        </div>
+        <!-- Member ID + Claim No -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Member / Card Number *</label>
+            <input type="text" id="ins-member-id" required placeholder="e.g. SHA-123456789" class="w-full p-2 border border-slate-300 rounded font-mono uppercase focus:border-blue-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-600 mb-1">Claim / Ref Number</label>
+            <input type="text" id="ins-claim-no" placeholder="Auto / leave blank" class="w-full p-2 border border-slate-300 rounded font-mono focus:border-blue-500 focus:outline-none">
+          </div>
+        </div>
+        <!-- Patient KRA PIN for B2B -->
+        <div>
+          <label class="block font-bold text-slate-600 mb-1">Patient KRA PIN <span class="text-slate-400 font-normal">(for eTIMS B2B invoice — optional)</span></label>
+          <input type="text" id="ins-buyer-pin" placeholder="e.g. P051234567Z" class="w-full p-2 border border-slate-300 rounded font-mono uppercase focus:border-blue-500 focus:outline-none">
+        </div>
+        <!-- Split payment -->
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+          <p class="font-bold text-slate-700 uppercase text-[10px]">Co-pay Split</p>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block text-slate-500 mb-0.5">Insurance Covers (KES)</label>
+              <input type="number" step="0.01" id="ins-covers-amount" placeholder="0.00"
+                     class="w-full p-2 border border-blue-300 bg-blue-50 rounded font-mono font-bold text-blue-800 focus:border-blue-500 focus:outline-none"
+                     oninput="calcInsuranceCopay()">
+            </div>
+            <div>
+              <label class="block text-slate-500 mb-0.5">Patient Co-pay (KES)</label>
+              <input type="number" step="0.01" id="ins-copay-amount" readonly placeholder="0.00"
+                     class="w-full p-2 border border-slate-200 bg-white rounded font-mono font-bold text-emerald-700 cursor-not-allowed">
+            </div>
+          </div>
+          <div>
+            <label class="block text-slate-500 mb-0.5">Co-pay Payment Method</label>
+            <div class="flex gap-2">
+              <label class="flex-1 flex items-center gap-1.5 p-2 border border-slate-200 rounded cursor-pointer hover:bg-emerald-50 has-[:checked]:border-emerald-400 has-[:checked]:bg-emerald-50">
+                <input type="radio" name="copay-method" value="CASH" checked class="accent-emerald-600">
+                <i class="fa-solid fa-money-bill-wave text-emerald-600"></i> <span class="font-bold">Cash</span>
+              </label>
+              <label class="flex-1 flex items-center gap-1.5 p-2 border border-slate-200 rounded cursor-pointer hover:bg-emerald-50 has-[:checked]:border-emerald-400 has-[:checked]:bg-emerald-50">
+                <input type="radio" name="copay-method" value="MPESA" class="accent-emerald-600">
+                <i class="fa-solid fa-mobile-screen text-emerald-700"></i> <span class="font-bold">M-Pesa</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="pt-2 flex justify-end space-x-2">
+          <button type="button" class="close-modal px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded font-bold">Cancel</button>
+          <button id="btn-submit-insurance" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded font-bold shadow flex items-center gap-1.5">
+            <i class="fa-solid fa-shield-heart"></i> Process Insurance Sale
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
   <!-- MODAL: M-PESA STK PUSH WAITING -->
   <!-- ========================================================================= -->
   <div id="modal-mpesa-wait" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
@@ -1145,6 +1265,7 @@
     const mobileTabCartBadge = document.getElementById("mobile-tab-cart-badge");
     const payCashBtn = document.getElementById("pay-cash-btn");
     const payMpesaBtn = document.getElementById("pay-mpesa-btn");
+    const payInsuranceBtn = document.getElementById("pay-insurance-btn");
     const floatingBar = document.getElementById("floating-cart-bar");
     const floatingCartCount = document.getElementById("floating-cart-count");
     const floatingCartTotal = document.getElementById("floating-cart-total");
@@ -1323,6 +1444,7 @@
         cartContainer.appendChild(emptyMsg);
         payCashBtn.disabled = true;
         payMpesaBtn.disabled = true;
+        if (payInsuranceBtn) payInsuranceBtn.disabled = true;
         subtotalEl.textContent = "KES 0.00";
         exemptEl.textContent = "KES 0.00";
         vatEl.textContent = "KES 0.00";
@@ -1335,6 +1457,7 @@
 
       payCashBtn.disabled = false;
       payMpesaBtn.disabled = false;
+      if (payInsuranceBtn) payInsuranceBtn.disabled = false;
 
       let subtotal = 0;
       let exemptTotal = 0;
@@ -1418,8 +1541,21 @@
     }
 
     // --- Search & Category Filtering ---
-    document.getElementById("pos-search-input").addEventListener("input", (e) => {
+    const posSearchInput = document.getElementById("pos-search-input");
+    posSearchInput.addEventListener("input", (e) => {
       loadProducts(e.target.value);
+    });
+
+    // Fast counter checkout: Enter key on barcode scan or search immediately adds top match
+    posSearchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (products.length > 0) {
+          addToCart(products[0]);
+          posSearchInput.value = "";
+          loadProducts("");
+        }
+      }
     });
 
     document.querySelectorAll(".cat-pill").forEach(pill => {
@@ -1435,18 +1571,73 @@
       });
     });
 
-    // --- Checkout (Cash & M-Pesa) ---
+    // --- Checkout (Cash, M-Pesa & Insurance) ---
     payCashBtn.addEventListener("click", () => submitCheckout("CASH"));
     payMpesaBtn.addEventListener("click", () => handleMpesaCheckout());
+    if (payInsuranceBtn) {
+      payInsuranceBtn.addEventListener("click", () => openInsuranceModal());
+    }
 
-    async function submitCheckout(paymentMethod, mpesaRef = null) {
+    // --- Insurance Modal & Co-pay Calculation ---
+    function openInsuranceModal() {
+      const total = getCartTotal();
+      document.getElementById("ins-total-display").textContent = `KES ${total.toFixed(2)}`;
+      document.getElementById("ins-covers-amount").value = total.toFixed(2);
+      document.getElementById("ins-copay-amount").value = "0.00";
+      document.getElementById("modal-insurance").classList.remove("hidden");
+      setTimeout(() => document.getElementById("ins-member-id").focus(), 150);
+    }
+
+    function calcInsuranceCopay() {
+      const total = getCartTotal();
+      const covers = parseFloat(document.getElementById("ins-covers-amount").value) || 0;
+      const copay = Math.max(0, total - covers);
+      document.getElementById("ins-copay-amount").value = copay.toFixed(2);
+    }
+
+    const btnSubmitInsurance = document.getElementById("btn-submit-insurance");
+    if (btnSubmitInsurance) {
+      btnSubmitInsurance.addEventListener("click", () => {
+        const scheme = document.getElementById("ins-scheme").value;
+        const memberId = document.getElementById("ins-member-id").value.trim();
+        const claimNo = document.getElementById("ins-claim-no").value.trim();
+        const buyerPin = document.getElementById("ins-buyer-pin").value.trim();
+        const covers = parseFloat(document.getElementById("ins-covers-amount").value) || 0;
+        const copay = parseFloat(document.getElementById("ins-copay-amount").value) || 0;
+        const copayMethod = document.querySelector('input[name="copay-method"]:checked')?.value || "CASH";
+
+        if (!memberId) {
+          alert("Please enter patient Member / Card Number for insurance validation.");
+          document.getElementById("ins-member-id").focus();
+          return;
+        }
+
+        const note = `Insurance: ${scheme} | Card: ${memberId}${claimNo ? ' | Claim: ' + claimNo : ''} | Scheme Covers: KES ${covers.toFixed(2)} | Co-pay: KES ${copay.toFixed(2)} (${copayMethod})`;
+        const ref = claimNo || `${scheme}-${memberId}`;
+
+        document.getElementById("modal-insurance").classList.add("hidden");
+
+        submitCheckout("INSURANCE", ref, {
+          notes: note,
+          buyerPin: buyerPin || null,
+          buyerName: `${scheme} - ${memberId}`,
+          amountTendered: covers + copay
+        });
+      });
+    }
+
+    async function submitCheckout(paymentMethod, paymentRef = null, extraOpts = {}) {
       if (cart.length === 0) return;
 
       const payload = {
         cashierId: currentUser.userId || 1,
         paymentMethod: paymentMethod,
-        customerPhone: document.getElementById("cust-phone-input").value.trim() || null,
-        customerPin: document.getElementById("cust-pin-input").value.trim() || null,
+        paymentReference: paymentRef,
+        buyerPhone: extraOpts.buyerPhone || document.getElementById("cust-phone-input").value.trim() || null,
+        buyerPin: extraOpts.buyerPin || document.getElementById("cust-pin-input").value.trim() || null,
+        buyerName: extraOpts.buyerName || null,
+        notes: extraOpts.notes || null,
+        amountTendered: extraOpts.amountTendered || null,
         items: cart.map(i => ({
           productId: i.product.productId,
           unitId: i.unitId,
@@ -1463,7 +1654,10 @@
           body: JSON.stringify(payload)
         });
 
-        if (!res.ok) throw new Error("Checkout failed");
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || "Checkout failed");
+        }
         const data = await res.json();
 
         // Show KRA Receipt
@@ -1473,6 +1667,12 @@
         cart = [];
         renderCart();
         loadProducts();
+
+        // Refocus search for fast counter workflow
+        setTimeout(() => {
+          const s = document.getElementById("pos-search-input");
+          if (s) s.focus();
+        }, 200);
       } catch (err) {
         alert("Transaction failed: " + err.message);
       }
@@ -1640,6 +1840,116 @@
         alert("Failed to update price: " + err.message);
       }
     });
+
+    // --- Add Medication Form & Modal ---
+    const invAddProductBtn = document.getElementById("inv-add-product-btn");
+    if (invAddProductBtn) {
+      invAddProductBtn.addEventListener("click", async () => {
+        if (!isManager()) {
+          alert("Only Managers can register new medications.");
+          return;
+        }
+
+        // Pre-fill expiry to 2 years from today
+        const expDate = new Date();
+        expDate.setFullYear(expDate.getFullYear() + 2);
+        const expInput = document.getElementById("prod-expiry-date");
+        if (expInput) expInput.value = expDate.toISOString().split("T")[0];
+
+        // Populate Category and Tax Class options from server
+        try {
+          const metaRes = await fetch("/api/v1/inventory/metadata");
+          if (metaRes.ok) {
+            const meta = await metaRes.json();
+            const catSelect = document.getElementById("prod-category");
+            const taxSelect = document.getElementById("prod-tax-class");
+
+            if (catSelect && meta.categories) {
+              catSelect.innerHTML = meta.categories.map(c => 
+                `<option value="${c.categoryId}">${c.name}</option>`
+              ).join("");
+            }
+
+            if (taxSelect && meta.taxClassifications) {
+              taxSelect.innerHTML = meta.taxClassifications.map(t => 
+                `<option value="${t.taxClassId}" ${t.classCode === 'EXEMPT' ? 'selected' : ''}>${t.taxName} (${t.taxRate}%)</option>`
+              ).join("");
+            }
+          }
+        } catch (e) {
+          console.warn("Could not load inventory metadata:", e);
+        }
+
+        document.getElementById("modal-add-product").classList.remove("hidden");
+        setTimeout(() => {
+          const b = document.getElementById("prod-brand-name");
+          if (b) b.focus();
+        }, 150);
+      });
+    }
+
+    const formAddProduct = document.getElementById("form-add-product");
+    if (formAddProduct) {
+      formAddProduct.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!isManager()) {
+          alert("Only Managers can add new medications.");
+          return;
+        }
+
+        const brandName = document.getElementById("prod-brand-name").value.trim();
+        const genericName = document.getElementById("prod-generic-name").value.trim();
+        const categoryId = parseInt(document.getElementById("prod-category").value) || 1;
+        const taxClassId = parseInt(document.getElementById("prod-tax-class").value) || 1;
+        const sku = document.getElementById("prod-sku").value.trim() || ("SKU-" + Date.now().toString().slice(-6));
+        const barcode = document.getElementById("prod-barcode").value.trim() || null;
+        const hsCode = document.getElementById("prod-hscode").value.trim() || "3004.90.00";
+        const costPrice = parseFloat(document.getElementById("prod-cost-price").value) || 0;
+        const sellingPrice = parseFloat(document.getElementById("prod-selling-price").value);
+        const batchNo = document.getElementById("prod-batch-no").value.trim() || ("BT-" + Date.now().toString().slice(-4));
+        const expiryDate = document.getElementById("prod-expiry-date").value || null;
+        const initialQty = parseInt(document.getElementById("prod-initial-qty").value) || 50;
+
+        const payload = {
+          brandName,
+          genericName,
+          categoryId,
+          baseUnitId: 1, // Default base unit: Tablet
+          taxClassId,
+          sku,
+          barcode,
+          hsCode,
+          costPrice,
+          sellingPrice,
+          reorderLevel: 20,
+          initialBatchNumber: batchNo,
+          initialExpiryDate: expiryDate,
+          initialStockQuantity: initialQty,
+          supplierName: "Harleys Ltd"
+        };
+
+        try {
+          const res = await fetch("/api/v1/inventory/products", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || "Failed to create medication");
+          }
+
+          document.getElementById("modal-add-product").classList.add("hidden");
+          formAddProduct.reset();
+          loadInventoryTable();
+          loadProducts();
+          alert(`Medication "${brandName}" successfully registered with ${initialQty} units!`);
+        } catch (err) {
+          alert("Failed to save medication: " + err.message);
+        }
+      });
+    }
 
     // --- VIEW 3: STOCK TAKING & RECONCILIATION ---
     async function loadStockTakeView() {
@@ -2353,6 +2663,47 @@
               tbody.appendChild(tr);
             });
           }
+
+          // Low Stock Reorder Alerts
+          const lowTbody = document.getElementById("low-stock-table-body");
+          const lowItems = alerts.lowStockProducts || [];
+          document.getElementById("rep-lowstock-count").textContent = `${lowItems.length} Items`;
+          lowTbody.innerHTML = "";
+
+          if (lowItems.length === 0) {
+            lowTbody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-emerald-600 font-bold"><i class="fa-solid fa-circle-check mr-1.5"></i>All products are adequately stocked above reorder thresholds.</td></tr>';
+          } else {
+            lowItems.forEach(item => {
+              const tr = document.createElement("tr");
+              tr.className = "hover:bg-rose-50/50";
+              const isOut = item.currentStock <= 0;
+              tr.innerHTML = `
+                <td class="p-3 font-bold text-slate-800">${item.brandName} <span class="text-slate-400 font-normal">(${item.genericName || '-'})</span></td>
+                <td class="p-3 font-mono text-slate-600 text-xs">${item.sku}</td>
+                <td class="p-3 text-center font-black ${isOut ? 'text-rose-600 bg-rose-50' : 'text-amber-700'}">${item.currentStock}</td>
+                <td class="p-3 text-center font-bold text-slate-500">${item.reorderLevel}</td>
+                <td class="p-3 text-center">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-black ${isOut ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-800'}">
+                    ${isOut ? 'OUT OF STOCK' : 'LOW STOCK'}
+                  </span>
+                </td>
+                <td class="p-3 text-center">
+                  <button class="btn-quick-reorder px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold transition flex items-center gap-1 mx-auto"
+                          data-id="${item.productId}" data-name="${item.brandName}">
+                    <i class="fa-solid fa-truck-ramp-box text-[10px]"></i> Reorder
+                  </button>
+                </td>
+              `;
+              lowTbody.appendChild(tr);
+            });
+
+            document.querySelectorAll(".btn-quick-reorder").forEach(btn => {
+              btn.addEventListener("click", () => {
+                switchModuleTab("suppliers");
+                document.getElementById("modal-receive-invoice").classList.remove("hidden");
+              });
+            });
+          }
         }
       } catch (e) {
         console.error("Failed to load reports", e);
@@ -2374,6 +2725,7 @@
       if (e.key === "F4") { e.preventDefault(); switchModuleTab("suppliers"); }
       if (e.key === "F5") { e.preventDefault(); switchModuleTab("staff"); }
       if (e.key === "F6") { e.preventDefault(); switchModuleTab("reports"); }
+      if (e.key === "F8" && payInsuranceBtn && !payInsuranceBtn.disabled) { e.preventDefault(); openInsuranceModal(); }
       if (e.key === "F9" && !payCashBtn.disabled) { e.preventDefault(); submitCheckout("CASH"); }
       if (e.key === "F10" && !payMpesaBtn.disabled) { e.preventDefault(); handleMpesaCheckout(); }
     });
@@ -2382,6 +2734,10 @@
     window.addEventListener("DOMContentLoaded", () => {
       loadProducts();
       updateUserBadge();
+      setTimeout(() => {
+        const s = document.getElementById("pos-search-input");
+        if (s) s.focus();
+      }, 400);
     });
   </script>
 </body>

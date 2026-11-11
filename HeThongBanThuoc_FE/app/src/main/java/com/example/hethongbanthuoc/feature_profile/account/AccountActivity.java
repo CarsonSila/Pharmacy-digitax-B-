@@ -77,28 +77,53 @@ public class AccountActivity extends AppCompatActivity {
             startActivity(intent);
         }); */
 
-        // Xử lý đăng xuất
+        // FIX #22: Gọi API logout để thu hồi refresh token trên server trước khi xóa phiên local
         btnDangXuat.setOnClickListener(v -> {
             new AlertDialog.Builder(AccountActivity.this)
                     .setTitle("Xác nhận")
                     .setMessage("Bạn có chắc chắn muốn đăng xuất không?")
-                    .setPositiveButton("Có", (dialog, which) -> {
-                        // Chỉ xóa token, giữ email + mật khẩu nếu RememberMe tick
-                        TokenManager.logout(AccountActivity.this);
-
-                        Intent intent = new Intent(AccountActivity.this, LoginActivity.class);
-                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                        startActivity(intent);
-                        finish();
-                    })
+                    .setPositiveButton("Có", (dialog, which) -> performLogout())
                     .setNegativeButton("Không", null)
                     .show();
         });
     }
 
+    /** FIX #22: Gọi POST /auth/logout để thu hồi refresh token, sau đó xóa phiên local */
+    private void performLogout() {
+        String token = TokenManager.getToken(this);
+        API_AuthService apiService = API_RetrofitClient
+                .getRetrofitInstance(this)
+                .create(API_AuthService.class);
+
+        if (token != null && !token.isEmpty()) {
+            apiService.logout("Bearer " + token).enqueue(new retrofit2.Callback<java.util.Map<String, String>>() {
+                @Override
+                public void onResponse(retrofit2.Call<java.util.Map<String, String>> call,
+                                       retrofit2.Response<java.util.Map<String, String>> response) {
+                    finishLogout();
+                }
+                @Override
+                public void onFailure(retrofit2.Call<java.util.Map<String, String>> call, Throwable t) {
+                    Log.w("LOGOUT", "Logout API call failed: " + t.getMessage());
+                    finishLogout();
+                }
+            });
+        } else {
+            finishLogout();
+        }
+    }
+
+    private void finishLogout() {
+        TokenManager.logout(this);
+        Intent intent = new Intent(AccountActivity.this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+    }
+
     private void loadUserProfile() {
         String token = TokenManager.getToken(this);
-        Log.d("PROFILE_DEBUG", "Token hiện tại: " + token);
+        Log.d("PROFILE_DEBUG", "Token hien tai len server");
 
         if (token == null || token.isEmpty()) {
             Toast.makeText(this, "Token không tồn tại", Toast.LENGTH_SHORT).show();

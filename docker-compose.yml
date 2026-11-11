@@ -1,40 +1,98 @@
 version: '3.8'
 
+# ─────────────────────────────────────────────────────────────
+# PharmaCore — Production Docker Compose
+#
+# BEFORE FIRST RUN:
+#   1. cp .env.example .env  → fill in all secrets
+#   2. docker compose up -d pharmacore-db  → wait for DB healthy
+#   3. docker compose up -d  → start everything
+# ─────────────────────────────────────────────────────────────
+
 services:
+
+  # ── MySQL 8 Database ───────────────────────────────────────
   pharmacore-db:
     image: mysql:8.0
     container_name: pharmacore-mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: Carsonsila@34
-      MYSQL_DATABASE: pharmacore_db
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: he_thong_ban_thuoc
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "3307:3306"
+      - "127.0.0.1:3307:3306"   # Only expose to localhost — not the public internet
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./db/setup_pharmacore_db.sql:/docker-entrypoint-initdb.d/01_schema.sql
-      - ./db/seed_pharmacore_data.sql:/docker-entrypoint-initdb.d/02_seed.sql
+      - ./HeThongBanThuoc_DB.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
       timeout: 5s
       retries: 10
+      start_period: 30s
 
+  # ── Spring Boot Backend ────────────────────────────────────
   pharmacore-pos:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: pharmacore-pos-app
     restart: always
     depends_on:
       pharmacore-db:
         condition: service_healthy
-    ports:
-      - "8080:8080"
+    # NOT exposed to host — Nginx is the only entry point
+    expose:
+      - "8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://pharmacore-db:3306/pharmacore_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: Carsonsila@34
-      DIGITAX_MOCK_MODE: "true"
-      MPESA_MOCK_MODE: "true"
+      SPRING_DATASOURCE_URL: jdbc:mysql://pharmacore-db:3306/he_thong_ban_thuoc?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      UPLOAD_DIR: /app/uploads
+      SPRING_PROFILES_ACTIVE: prod
+    volumes:
+      - upload_data:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ── Nginx Reverse Proxy (HTTPS termination) ────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: pharmacore-nginx
+    restart: always
+    depends_on:
+      pharmacore-pos:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - certbot_www:/var/www/certbot:ro
+      - certbot_conf:/etc/letsencrypt:ro
+
+  # ── Certbot (free HTTPS certificate from Let's Encrypt) ────
+  certbot:
+    image: certbot/certbot:latest
+    container_name: pharmacore-certbot
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_conf:/etc/letsencrypt
+    # Run manually: docker compose run --rm certbot certonly ...
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done'"
 
 volumes:
   mysql_data:
-
+  upload_data:
+  certbot_www:
+  certbot_conf:
