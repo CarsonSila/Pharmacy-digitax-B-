@@ -8,9 +8,9 @@ spring:
     name: pharmacore-pos-backend
 
   datasource:
-    url: jdbc:mysql://localhost:3307/pharmacore_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-    username: root
-    password: Carsonsila@34
+    url: ${DB_URL:jdbc:mysql://localhost:3307/pharmacore_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:Carsonsila@34}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 10

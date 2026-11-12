@@ -33,22 +33,26 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<UserResponse> register(@RequestBody UserRegistrationRequest request) {
+    public ResponseEntity<?> register(@RequestBody UserRegistrationRequest request) {
         try {
             UserResponse response = userService.registerUser(request);
             return ResponseEntity.ok(response);
+        } catch (SecurityException se) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).body(se.getMessage());
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     @PostMapping("/login")
-    public ResponseEntity<UserResponse> login(@RequestBody UserLoginRequest request) {
+    public ResponseEntity<?> login(@RequestBody UserLoginRequest request) {
         try {
             UserResponse response = userService.authenticate(request);
             return ResponseEntity.ok(response);
+        } catch (SecurityException se) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.TOO_MANY_REQUESTS).body(se.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(401).build();
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }
     }
 }

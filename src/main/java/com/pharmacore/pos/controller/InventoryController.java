@@ -48,15 +48,21 @@ public class InventoryController {
     }
 
     @PutMapping("/products/{productId}/price")
-    public ResponseEntity<Product> updatePrice(
+    public ResponseEntity<?> updatePrice(
             @PathVariable("productId") Integer productId,
             @RequestBody com.pharmacore.pos.dto.UpdatePriceRequest request
     ) {
         if (request.getSellingPrice() == null || request.getSellingPrice().signum() <= 0) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body("Selling price must be greater than zero.");
         }
-        Product updated = inventoryService.updateProductPrice(productId, request);
-        return ResponseEntity.ok(updated);
+        try {
+            Product updated = inventoryService.updateProductPrice(productId, request);
+            return ResponseEntity.ok(updated);
+        } catch (SecurityException se) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).body(se.getMessage());
+        } catch (IllegalArgumentException iae) {
+            return ResponseEntity.notFound().build();
+        }
     }
 }
 

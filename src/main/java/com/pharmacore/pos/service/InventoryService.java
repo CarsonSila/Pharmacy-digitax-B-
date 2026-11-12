@@ -24,18 +24,21 @@ public class InventoryService {
     private final CategoryRepository categoryRepository;
     private final UnitOfMeasureRepository unitOfMeasureRepository;
     private final TaxClassificationRepository taxClassificationRepository;
+    private final UserService userService;
 
     public InventoryService(
             ProductRepository productRepository,
             ProductBatchRepository productBatchRepository,
             CategoryRepository categoryRepository,
             UnitOfMeasureRepository unitOfMeasureRepository,
-            TaxClassificationRepository taxClassificationRepository) {
+            TaxClassificationRepository taxClassificationRepository,
+            UserService userService) {
         this.productRepository = productRepository;
         this.productBatchRepository = productBatchRepository;
         this.categoryRepository = categoryRepository;
         this.unitOfMeasureRepository = unitOfMeasureRepository;
         this.taxClassificationRepository = taxClassificationRepository;
+        this.userService = userService;
     }
 
     @Transactional
@@ -121,6 +124,11 @@ public class InventoryService {
 
     @Transactional
     public Product updateProductPrice(Integer productId, com.pharmacore.pos.dto.UpdatePriceRequest req) {
+        if (!userService.verifyManager(req.getManagerUsername(), req.getManagerPin())) {
+            log.warn("Blocked unauthorized price update attempt by user '{}'", req.getManagerUsername());
+            throw new SecurityException("Manager authorization required to modify drug selling prices. Invalid PIN.");
+        }
+
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + productId));
 

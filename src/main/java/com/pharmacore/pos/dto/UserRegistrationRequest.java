@@ -17,5 +17,7 @@ public class UserRegistrationRequest {
     private String phone;
     private String pinCode; // 4-digit POS PIN
     private String password;
+    private String managerUsername;
+    private String managerPin;
 }
 

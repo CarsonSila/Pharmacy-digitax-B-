@@ -165,12 +165,11 @@ public class StockTakeService {
             throw new IllegalStateException("Session is not in progress. Current status: " + session.getStatus());
         }
 
-        // Manager verification if PIN or username provided
-        if (req.getManagerPin() != null || req.getReconciledBy() != null) {
-            boolean isManager = userService.verifyManager(req.getReconciledBy(), req.getManagerPin());
-            if (!isManager && req.getManagerPin() != null) {
-                log.warn("Stock take reconciliation override attempt by: {}", req.getReconciledBy());
-            }
+        // Manager verification: strictly enforced
+        boolean isManager = userService.verifyManager(req.getReconciledBy(), req.getManagerPin());
+        if (!isManager) {
+            log.warn("Blocked unauthorized stock take reconciliation attempt by: {}", req.getReconciledBy());
+            throw new SecurityException("Manager authorization required for stock take reconciliation. Invalid PIN.");
         }
 
         List<StockTakeItem> items = itemRepository.findBySessionSessionId(session.getSessionId());

@@ -42,11 +42,17 @@ public class StockTakeController {
     }
 
     @PostMapping("/sessions/{id}/reconcile")
-    public ResponseEntity<StockTakeSession> reconcileSession(
+    public ResponseEntity<?> reconcileSession(
             @PathVariable("id") Long id,
             @RequestBody ReconcileStockTakeRequest request
     ) {
-        return ResponseEntity.ok(stockTakeService.reconcileSession(id, request));
+        try {
+            return ResponseEntity.ok(stockTakeService.reconcileSession(id, request));
+        } catch (SecurityException se) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).body(se.getMessage());
+        } catch (IllegalStateException | IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(ex.getMessage());
+        }
     }
 }
 

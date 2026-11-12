@@ -795,6 +795,11 @@
             <input type="password" id="staff-password" value="123456" class="w-full p-2 border border-slate-300 rounded">
           </div>
         </div>
+        <div class="pt-2 border-t border-slate-100">
+          <label class="block text-slate-500 font-bold mb-1">Manager Authorization PIN *</label>
+          <input type="password" maxlength="4" id="staff-manager-pin" required placeholder="Enter Manager 4-digit PIN (e.g. 0000)" class="w-full p-2 border border-slate-300 rounded focus:border-emerald-500 text-center tracking-widest font-mono text-sm">
+          <p class="text-[10px] text-slate-400 mt-0.5">Manager authorization required to onboard employee accounts.</p>
+        </div>
         <div class="pt-2 flex justify-end space-x-2">
           <button type="button" class="close-modal px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded font-bold">Cancel</button>
           <button type="submit" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold shadow">Save Employee</button>
@@ -2535,7 +2540,9 @@
         phone: document.getElementById("staff-phone").value.trim(),
         email: document.getElementById("staff-email").value.trim(),
         pinCode: document.getElementById("staff-pin").value.trim(),
-        password: document.getElementById("staff-password").value.trim()
+        password: document.getElementById("staff-password").value.trim(),
+        managerUsername: currentUser.username,
+        managerPin: document.getElementById("staff-manager-pin").value.trim()
       };
 
       try {
@@ -2546,7 +2553,12 @@
         });
         if (res.ok) {
           document.getElementById("modal-add-staff").classList.add("hidden");
+          document.getElementById("form-add-staff").reset();
           loadStaffView();
+          alert(`Employee "${payload.fullName}" registered successfully!`);
+        } else {
+          const errText = await res.text();
+          alert("Registration rejected: " + (errText || "Invalid authorization"));
         }
       } catch (err) {
         alert("Failed to register staff: " + err.message);

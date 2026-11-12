@@ -26,6 +26,16 @@ public class UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
 
+    // Brute-force protection: lock out after 5 consecutive failures for 60 seconds
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+    private static final long LOCKOUT_DURATION_MS = 60_000L;
+    private final java.util.concurrent.ConcurrentHashMap<String, FailedAttemptTracker> failedAttempts = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static class FailedAttemptTracker {
+        int attempts = 0;
+        long lockedUntil = 0;
+    }
+
     public UserService(UserRepository userRepository, RoleRepository roleRepository) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
@@ -43,6 +53,12 @@ public class UserService {
 
     @Transactional
     public UserResponse registerUser(UserRegistrationRequest req) {
+        // Enforce Manager Authorization for staff onboarding
+        if (!verifyManager(req.getManagerUsername(), req.getManagerPin())) {
+            log.warn("Blocked unauthorized employee registration attempt by: {}", req.getManagerUsername());
+            throw new SecurityException("Manager authorization required to register staff members. Invalid PIN or unauthorized user.");
+        }
+
         if (req.getUsername() == null || req.getUsername().isBlank()) {
             throw new IllegalArgumentException("Username is required.");
         }
@@ -94,6 +110,37 @@ public class UserService {
     }
 
     public UserResponse authenticate(UserLoginRequest req) {
+        String clientKey = req.getUsername() != null && !req.getUsername().isBlank()
+                ? req.getUsername().trim().toLowerCase()
+                : "PIN_TERMINAL";
+
+        FailedAttemptTracker tracker = failedAttempts.computeIfAbsent(clientKey, k -> new FailedAttemptTracker());
+        long now = System.currentTimeMillis();
+
+        if (now < tracker.lockedUntil) {
+            long remainingSec = (tracker.lockedUntil - now) / 1000;
+            log.warn("Blocked login attempt for {} due to active brute-force lockout ({}s left)", clientKey, remainingSec);
+            throw new SecurityException("Too many failed attempts. Terminal locked for security. Please wait " + remainingSec + "s.");
+        }
+
+        try {
+            UserResponse response = doAuthenticate(req);
+            // Reset failed counter on successful authentication
+            failedAttempts.remove(clientKey);
+            return response;
+        } catch (Exception ex) {
+            tracker.attempts++;
+            if (tracker.attempts >= MAX_FAILED_ATTEMPTS) {
+                tracker.lockedUntil = now + LOCKOUT_DURATION_MS;
+                tracker.attempts = 0;
+                log.warn("Account/Terminal {} locked out for {}ms after {} consecutive failures", clientKey, LOCKOUT_DURATION_MS, MAX_FAILED_ATTEMPTS);
+                throw new SecurityException("Account/Terminal locked for 60 seconds after 5 failed attempts.");
+            }
+            throw ex;
+        }
+    }
+
+    private UserResponse doAuthenticate(UserLoginRequest req) {
         // Quick PIN login
         if (req.getPinCode() != null && !req.getPinCode().isBlank()) {
             User user = userRepository.findByPinCode(req.getPinCode().trim())
@@ -120,9 +167,9 @@ public class UserService {
                      user.getPasswordHash().startsWith("$2a$") || // BCrypt seed in DB
                      user.getPasswordHash().equalsIgnoreCase(req.getPassword()));
 
-            if (!passMatches && req.getPassword() != null && !req.getPassword().isBlank()) {
-                // If standard login matches plain or hashed
+            if (!passMatches) {
                 log.warn("Password mismatch for username: {}", req.getUsername());
+                throw new IllegalArgumentException("Invalid username or password.");
             }
 
             return toResponse(user);
