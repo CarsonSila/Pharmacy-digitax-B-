@@ -49,3 +49,5 @@ HeThongBanThuoc_BE/**/application-local.properties
 reference/
 *.log
 cloudflared.exe
+
+bin/
