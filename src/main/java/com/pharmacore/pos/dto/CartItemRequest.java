@@ -22,5 +22,9 @@ public class CartItemRequest {
     private Integer quantity;
 
     private BigDecimal discount; // Optional line discount
+
+    private BigDecimal customUnitPrice; // Optional: Cashier / Pharmacist counter price override (e.g. 86 -> 90)
+
+    private BigDecimal unitPrice; // Optional: Alias for custom unit price from POS cart
 }
 

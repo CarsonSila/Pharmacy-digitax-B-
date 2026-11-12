@@ -24,6 +24,7 @@ public class DataInitializer implements CommandLineRunner {
     private final TaxClassificationRepository taxClassificationRepository;
     private final ProductRepository productRepository;
     private final ProductBatchRepository productBatchRepository;
+    private final ProductUnitConversionRepository productUnitConversionRepository;
 
     public DataInitializer(
             RoleRepository roleRepository,
@@ -33,7 +34,8 @@ public class DataInitializer implements CommandLineRunner {
             UnitOfMeasureRepository unitOfMeasureRepository,
             TaxClassificationRepository taxClassificationRepository,
             ProductRepository productRepository,
-            ProductBatchRepository productBatchRepository) {
+            ProductBatchRepository productBatchRepository,
+            ProductUnitConversionRepository productUnitConversionRepository) {
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
         this.supplierRepository = supplierRepository;
@@ -42,12 +44,14 @@ public class DataInitializer implements CommandLineRunner {
         this.taxClassificationRepository = taxClassificationRepository;
         this.productRepository = productRepository;
         this.productBatchRepository = productBatchRepository;
+        this.productUnitConversionRepository = productUnitConversionRepository;
     }
 
     @Override
     public void run(String... args) {
         initReferenceData();
         initMedicinesCatalog();
+        initProductUnitConversions();
         initRolesAndUsers();
         initSuppliers();
     }
@@ -73,6 +77,11 @@ public class DataInitializer implements CommandLineRunner {
         getOrCreateUom("Tablet",                "tab");
         getOrCreateUom("Capsule",               "cap");
         getOrCreateUom("Strip (10 Tabs)",       "strip");
+        getOrCreateUom("Strip (6 Tabs)",        "strip");
+        getOrCreateUom("Pack (100 Tabs)",       "pack");
+        getOrCreateUom("Pack (14 Tabs)",        "pack");
+        getOrCreateUom("Pack (24 Tabs)",        "pack");
+        getOrCreateUom("Pack (30 Tabs)",        "pack");
         getOrCreateUom("Bottle",                "btl");
         getOrCreateUom("Sachet",                "sachet");
         getOrCreateUom("Vial",                  "vial");
@@ -270,6 +279,61 @@ public class DataInitializer implements CommandLineRunner {
         productBatchRepository.save(batch);
 
         log.info("Initialized product: {} [{}] – batch {} qty={}", brandName, sku, batchNumber, initialQty);
+    }
+
+    // -------------------------------------------------------------------------
+    // Fractional & Bulk Unit Conversions (Pieces, Strips, Whole Packs)
+    // -------------------------------------------------------------------------
+
+    private void initProductUnitConversions() {
+        // Panadol: Base = Tablet (1 piece). Strips (10) and Whole Pack (100)
+        seedConversion("PCM-500", "Strip (10 Tabs)", 10, new BigDecimal("45.00"));
+        seedConversion("PCM-500", "Pack (100 Tabs)", 100, new BigDecimal("400.00"));
+
+        // Brufen 400mg: Base = Tablet. Strips (10) and Whole Pack (100)
+        seedConversion("IBU-400", "Strip (10 Tabs)", 10, new BigDecimal("100.00"));
+        seedConversion("IBU-400", "Pack (100 Tabs)", 100, new BigDecimal("900.00"));
+
+        // Augmentin 625mg: Base = Tablet. Whole Pack (14 tabs)
+        seedConversion("AUG-625", "Pack (14 Tabs)", 14, new BigDecimal("1400.00"));
+
+        // Amoxil 500mg: Base = Capsule. Strips (10) and Whole Pack (100)
+        seedConversion("AMX-500", "Strip (10 Tabs)", 10, new BigDecimal("160.00"));
+        seedConversion("AMX-500", "Pack (100 Tabs)", 100, new BigDecimal("1500.00"));
+
+        // Coartem: Base = Tablet. Strip (6 tabs) and Full Course (24 tabs)
+        seedConversion("COAR-6",  "Strip (6 Tabs)", 6, new BigDecimal("350.00"));
+        seedConversion("COAR-6",  "Pack (24 Tabs)", 24, new BigDecimal("1200.00"));
+
+        // Amlodipine 5mg: Base = Tablet. Strip (10) and Monthly Pack (30)
+        seedConversion("AML-5",   "Strip (10 Tabs)", 10, new BigDecimal("150.00"));
+        seedConversion("AML-5",   "Pack (30 Tabs)", 30, new BigDecimal("400.00"));
+
+        // Metformin 500mg: Base = Tablet. Strip (10) and Monthly Pack (100)
+        seedConversion("MET-500", "Strip (10 Tabs)", 10, new BigDecimal("100.00"));
+        seedConversion("MET-500", "Pack (100 Tabs)", 100, new BigDecimal("850.00"));
+
+        // Omeprazole 20mg: Base = Capsule. Strip (10) and Monthly Pack (30)
+        seedConversion("OMP-20",  "Strip (10 Tabs)", 10, new BigDecimal("250.00"));
+        seedConversion("OMP-20",  "Pack (30 Tabs)", 30, new BigDecimal("700.00"));
+    }
+
+    private void seedConversion(String sku, String uomName, int factor, BigDecimal price) {
+        productRepository.findBySku(sku).ifPresent(prod -> {
+            unitOfMeasureRepository.findByName(uomName).ifPresent(uom -> {
+                Optional<ProductUnitConversion> existing = productUnitConversionRepository.findByProductAndUnit(prod, uom);
+                if (existing.isEmpty()) {
+                    ProductUnitConversion conv = ProductUnitConversion.builder()
+                            .product(prod)
+                            .unit(uom)
+                            .conversionFactor(factor)
+                            .sellingPrice(price)
+                            .build();
+                    productUnitConversionRepository.save(conv);
+                    log.info("Initialized unit conversion: {} -> {} (x{}, KES {})", prod.getBrandName(), uomName, factor, price);
+                }
+            });
+        });
     }
 
     // -------------------------------------------------------------------------

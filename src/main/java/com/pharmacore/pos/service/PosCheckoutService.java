@@ -88,8 +88,14 @@ public class PosCheckoutService {
             BigDecimal discount = itemReq.getDiscount() != null ? itemReq.getDiscount() : BigDecimal.ZERO;
             TaxClassification taxClass = product.getTaxClassification();
 
+            // Support flexible counter price override (e.g. medicine is 86 in catalog, cashier sells at 90)
+            BigDecimal counterPrice = itemReq.getCustomUnitPrice() != null ? itemReq.getCustomUnitPrice() : itemReq.getUnitPrice();
+            BigDecimal effectiveUnitPrice = (counterPrice != null && counterPrice.compareTo(BigDecimal.ZERO) > 0)
+                    ? counterPrice
+                    : allocation.unitPrice();
+
             TaxEngineService.LineTaxCalculation lineTax = taxEngineService.calculateTaxFromInclusivePrice(
-                    allocation.unitPrice(), allocation.quantitySoldInUnit(), discount, taxClass
+                    effectiveUnitPrice, allocation.quantitySoldInUnit(), discount, taxClass
             );
 
             OrderItem orderItem = OrderItem.builder()
@@ -99,7 +105,7 @@ public class PosCheckoutService {
                     .unit(allocation.unit())
                     .quantity(allocation.quantitySoldInUnit())
                     .quantityInBaseUnits(allocation.baseUnitsDeducted())
-                    .unitPrice(allocation.unitPrice())
+                    .unitPrice(effectiveUnitPrice)
                     .discount(discount)
                     .taxClassification(taxClass)
                     .taxRate(taxClass.getTaxRate())
@@ -109,7 +115,7 @@ public class PosCheckoutService {
 
             order.getItems().add(orderItem);
 
-            subtotal = subtotal.add(allocation.unitPrice().multiply(BigDecimal.valueOf(allocation.quantitySoldInUnit())));
+            subtotal = subtotal.add(effectiveUnitPrice.multiply(BigDecimal.valueOf(allocation.quantitySoldInUnit())));
             totalDiscount = totalDiscount.add(discount);
             totalTax = totalTax.add(lineTax.taxAmount());
 
@@ -129,7 +135,7 @@ public class PosCheckoutService {
                     allocation.quantitySoldInUnit(),
                     allocation.batch().getBatchNumber(),
                     allocation.batch().getExpiryDate().toString(),
-                    allocation.unitPrice(),
+                    effectiveUnitPrice,
                     taxClass.getClassCode(),
                     lineTax.taxAmount(),
                     lineTax.grossAmount()
@@ -141,7 +147,7 @@ public class PosCheckoutService {
                     .hsCode(product.getHsCode())
                     .taxType(taxClass.getClassCode())
                     .quantity(allocation.quantitySoldInUnit())
-                    .unitPrice(allocation.unitPrice())
+                    .unitPrice(effectiveUnitPrice)
                     .discount(discount)
                     .build());
         }

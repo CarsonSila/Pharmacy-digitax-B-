@@ -82,6 +82,7 @@ public class PosCheckoutController {
      * Retrieves the formatted 80mm thermal receipt text for reprint or serial printing.
      */
     @GetMapping(value = "/orders/{orderId}/receipt", produces = org.springframework.http.MediaType.TEXT_PLAIN_VALUE)
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<String> getOrderReceiptText(@PathVariable("orderId") Long orderId) {
         return orderRepository.findById(orderId)
                 .map(order -> {

@@ -1404,6 +1404,9 @@
         const badgeColor = isExempt ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800';
         const badgeText = isExempt ? '[E] Exempt 0%' : '[A] 16% VAT';
 
+        const hasConversions = p.unitConversions && p.unitConversions.length > 0;
+        const uomLabel = p.baseUnit ? (p.baseUnit.symbol || p.baseUnit.name) : 'unit';
+
         const card = document.createElement("div");
         card.className = "bg-white p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:shadow-md transition cursor-pointer flex flex-col justify-between active:scale-[0.99]";
         card.innerHTML = `
@@ -1416,7 +1419,10 @@
             <p class="text-[10px] text-slate-500 italic">${p.genericName || ''}</p>
           </div>
           <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between">
-            <span class="text-xs sm:text-sm font-black text-emerald-700">KES ${p.sellingPrice.toFixed(2)}</span>
+            <div>
+              <div class="text-xs sm:text-sm font-black text-emerald-700 font-mono">KES ${p.sellingPrice.toFixed(2)}</div>
+              <div class="text-[9px] text-slate-400">per ${uomLabel} ${hasConversions ? '<span class="text-[8px] bg-emerald-50 text-emerald-700 font-semibold px-1 rounded border border-emerald-200">Wholes & Pieces</span>' : ''}</div>
+            </div>
             <button class="bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white px-2 py-1 rounded text-xs font-bold transition flex items-center space-x-1">
               <span>+ Add</span>
             </button>
@@ -1428,15 +1434,19 @@
     }
 
     function addToCart(product) {
-      const existing = cart.find(item => item.product.productId === product.productId);
+      const existing = cart.find(item => item.product.productId === product.productId && item.unitId === product.baseUnit.unitId);
       if (existing) {
         existing.quantity += 1;
       } else {
         cart.push({
           product: product,
           unitId: product.baseUnit.unitId,
+          unitName: product.baseUnit.name,
+          unitSymbol: product.baseUnit.symbol,
+          unitFactor: 1,
           quantity: 1,
-          unitPrice: product.sellingPrice
+          unitPrice: product.sellingPrice,
+          catalogPrice: product.sellingPrice
         });
       }
       renderCart();
@@ -1485,25 +1495,68 @@
           vatTotal += (lineTotal - lineNet);
         }
 
+        const convs = p.unitConversions || [];
+        const baseUnitSym = (p.baseUnit && p.baseUnit.symbol) ? p.baseUnit.symbol : 'tab';
+
+        // Options for unit select (Pieces vs Whole Packs / Strips)
+        let unitOptionsHtml = `<option value="base" ${item.unitId === p.baseUnit.unitId ? 'selected' : ''}>1 Piece / ${baseUnitSym} (KES ${p.sellingPrice.toFixed(2)})</option>`;
+        convs.forEach(c => {
+          const isSel = (item.unitId === c.unit.unitId) ? 'selected' : '';
+          unitOptionsHtml += `<option value="${c.unit.unitId}" ${isSel}>${c.unit.name} (x${c.conversionFactor}) - KES ${c.sellingPrice.toFixed(2)}</option>`;
+        });
+
+        // Profit margin calculation
+        const unitFactor = item.unitFactor || 1;
+        const unitCost = (p.costPrice || 0) * unitFactor;
+        const unitProfit = item.unitPrice - unitCost;
+        const marginPct = item.unitPrice > 0 ? ((unitProfit / item.unitPrice) * 100) : 0;
+        const isCustomPrice = Math.abs(item.unitPrice - (item.catalogPrice || p.sellingPrice)) > 0.01;
+
         const row = document.createElement("div");
-        row.className = "p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between";
+        row.className = "p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col gap-1.5 shadow-sm";
         row.innerHTML = `
-          <div class="flex-1 pr-2">
-            <h4 class="font-bold text-xs text-slate-800 leading-tight">${p.brandName}</h4>
-            <div class="text-[10px] text-slate-500 font-mono">KES ${item.unitPrice.toFixed(2)} / unit</div>
-          </div>
-          <div class="flex items-center space-x-2">
-            <div class="flex items-center border border-slate-300 rounded-lg bg-white overflow-hidden">
-              <button class="px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-100 font-bold" onclick="updateQty(${index}, -1)">-</button>
-              <span class="px-2 text-xs font-bold font-mono">${item.quantity}</span>
-              <button class="px-2 py-0.5 text-xs text-slate-500 hover:bg-slate-100 font-bold" onclick="updateQty(${index}, 1)">+</button>
+          <div class="flex items-start justify-between">
+            <div class="flex-1 pr-1">
+              <div class="flex items-center gap-1.5">
+                <h4 class="font-bold text-xs text-slate-800 leading-tight">${p.brandName}</h4>
+                ${isCustomPrice ? '<span class="text-[9px] bg-amber-100 text-amber-800 px-1 py-0.2 rounded font-semibold border border-amber-300">Custom Price</span>' : ''}
+              </div>
+              <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                <select class="text-[10px] font-semibold bg-white border border-slate-300 rounded px-1.5 py-0.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-sm" onchange="changeCartItemUnit(${index}, this.value)">
+                  ${unitOptionsHtml}
+                </select>
+                <span class="text-[9px] text-slate-400 font-mono">Cost: KES ${unitCost.toFixed(1)}</span>
+              </div>
             </div>
-            <div class="text-right w-16">
-              <span class="font-bold text-xs text-slate-800 font-mono">KES ${lineTotal.toFixed(2)}</span>
-            </div>
-            <button class="text-slate-400 hover:text-rose-600 text-xs ml-1" onclick="removeItem(${index})">
+            <button class="text-slate-400 hover:text-rose-600 text-xs ml-1" onclick="removeItem(${index})" title="Remove item">
               <i class="fa-solid fa-xmark"></i>
             </button>
+          </div>
+
+          <div class="flex items-center justify-between pt-1 border-t border-slate-200/70 text-xs">
+            <!-- Quantity Counter -->
+            <div class="flex items-center border border-slate-300 rounded-lg bg-white overflow-hidden shadow-sm">
+              <button class="px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100 font-bold" onclick="updateQty(${index}, -1)">-</button>
+              <input type="number" min="1" value="${item.quantity}" class="w-8 text-center text-xs font-bold font-mono focus:outline-none" onchange="setQty(${index}, this.value)">
+              <button class="px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100 font-bold" onclick="updateQty(${index}, 1)">+</button>
+            </div>
+
+            <!-- Price override & Profit Margin -->
+            <div class="flex items-center space-x-2">
+              <div class="text-right">
+                <div class="flex items-center justify-end space-x-1">
+                  <span class="text-[10px] text-slate-500 font-semibold">@ KES</span>
+                  <input type="number" step="0.5" min="0" value="${item.unitPrice.toFixed(2)}" class="w-16 px-1 py-0.5 text-xs font-mono font-bold border border-slate-300 rounded bg-white text-right focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 shadow-sm" onchange="updateItemPrice(${index}, this.value)" title="Click to override counter price and adjust profit margin">
+                </div>
+                <div class="text-[9px] font-bold ${marginPct >= 20 ? 'text-emerald-700' : (marginPct > 0 ? 'text-amber-700' : 'text-rose-600')}">
+                  ${marginPct >= 0 ? '+' : ''}${marginPct.toFixed(0)}% (${unitProfit >= 0 ? '+' : ''}${unitProfit.toFixed(1)} KES/u)
+                </div>
+              </div>
+              <div class="text-right min-w-[64px]">
+                <span class="font-bold text-xs text-slate-800 font-mono block">KES ${lineTotal.toFixed(2)}</span>
+                <span class="text-[9px] text-slate-400 font-mono">${item.quantity} ${item.unitSymbol || baseUnitSym}</span>
+              </div>
+            </div>
           </div>
         `;
         cartContainer.appendChild(row);
@@ -1518,6 +1571,54 @@
       mobileTabCartBadge.textContent = totalQty;
       updateFloatingBar();
     }
+
+    window.changeCartItemUnit = function(index, value) {
+      const item = cart[index];
+      if (!item) return;
+      const p = item.product;
+
+      if (value === "base" || value === String(p.baseUnit.unitId)) {
+        item.unitId = p.baseUnit.unitId;
+        item.unitName = p.baseUnit.name;
+        item.unitSymbol = p.baseUnit.symbol;
+        item.unitFactor = 1;
+        item.unitPrice = p.sellingPrice;
+        item.catalogPrice = p.sellingPrice;
+      } else {
+        const conv = (p.unitConversions || []).find(c => String(c.unit.unitId) === String(value));
+        if (conv) {
+          item.unitId = conv.unit.unitId;
+          item.unitName = conv.unit.name;
+          item.unitSymbol = conv.unit.symbol;
+          item.unitFactor = conv.conversionFactor;
+          item.unitPrice = conv.sellingPrice;
+          item.catalogPrice = conv.sellingPrice;
+        }
+      }
+      renderCart();
+    };
+
+    window.updateItemPrice = function(index, newPriceStr) {
+      const item = cart[index];
+      if (!item) return;
+      const newPrice = parseFloat(newPriceStr);
+      if (!isNaN(newPrice) && newPrice >= 0) {
+        item.unitPrice = newPrice;
+        renderCart();
+      }
+    };
+
+    window.setQty = function(index, valStr) {
+      const item = cart[index];
+      if (!item) return;
+      const val = parseInt(valStr, 10);
+      if (!isNaN(val) && val > 0) {
+        item.quantity = val;
+        renderCart();
+      } else if (val <= 0) {
+        removeItem(index);
+      }
+    };
 
     window.updateQty = function(index, delta) {
       if (cart[index]) {
@@ -1647,8 +1748,9 @@
           productId: i.product.productId,
           unitId: i.unitId,
           quantity: i.quantity,
+          customUnitPrice: i.unitPrice,
           unitPrice: i.unitPrice,
-          discountAmount: 0
+          discount: 0
         }))
       };
 
@@ -1720,18 +1822,20 @@
 
       const body = document.getElementById("rec-items-body");
       body.innerHTML = "";
-      if (data.lines) {
-        data.lines.forEach(line => {
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td class="py-0.5">${line.productName}</td>
-            <td class="py-0.5 text-center">${line.quantity}</td>
-            <td class="py-0.5 text-right">${line.unitPrice.toFixed(2)}</td>
-            <td class="py-0.5 text-right font-bold">${line.lineTotal.toFixed(2)}</td>
-          `;
-          body.appendChild(row);
-        });
-      }
+      const receiptItems = data.items || data.lines || [];
+      receiptItems.forEach(line => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td class="py-0.5">
+            <div class="font-bold">${line.productName}</div>
+            <div class="text-[9px] text-slate-500 font-mono">${line.unitName || ''} · Batch: ${line.batchNumber || ''}</div>
+          </td>
+          <td class="py-0.5 text-center font-mono">${line.quantity}</td>
+          <td class="py-0.5 text-right font-mono">${line.unitPrice.toFixed(2)}</td>
+          <td class="py-0.5 text-right font-bold font-mono">${line.lineTotal.toFixed(2)}</td>
+        `;
+        body.appendChild(row);
+      });
 
       document.getElementById("rec-subtotal").textContent = `KES ${data.subtotalAmount.toFixed(2)}`;
       document.getElementById("rec-exempt").textContent = `KES ${(data.subtotalAmount - (data.taxAmount / 0.16)).toFixed(2)}`;

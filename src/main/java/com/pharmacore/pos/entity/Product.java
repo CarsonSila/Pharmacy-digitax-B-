@@ -66,9 +66,8 @@ public class Product {
     @Builder.Default
     private Boolean isActive = true;
 
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @Builder.Default
-    @com.fasterxml.jackson.annotation.JsonIgnore
     private List<ProductUnitConversion> unitConversions = new ArrayList<>();
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
