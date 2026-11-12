@@ -83,7 +83,7 @@ public class PosCheckoutService {
 
             // FEFO batch allocation & atomic inventory deduction
             InventoryFefoService.AllocatedBatchAllocation allocation =
-                    inventoryFefoService.allocateBatchFefo(product.getProductId(), itemReq.getUnitId(), itemReq.getQuantity());
+                    inventoryFefoService.allocateBatchFefo(product.getProductId(), itemReq.getUnitId(), itemReq.getSaleType(), itemReq.getQuantity());
 
             BigDecimal discount = itemReq.getDiscount() != null ? itemReq.getDiscount() : BigDecimal.ZERO;
             TaxClassification taxClass = product.getTaxClassification();

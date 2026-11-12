@@ -38,9 +38,20 @@ public class InventoryFefoService {
      */
     public record UnitPriceAndFactor(int conversionFactor, BigDecimal unitPrice, UnitOfMeasure unit) {}
 
-    public UnitPriceAndFactor resolveUnitAndPrice(Product product, Integer unitId) {
+    public UnitPriceAndFactor resolveUnitAndPrice(Product product, Integer unitId, String saleType) {
+        // If saleType is explicitly "P" (Piece)
+        if ("P".equalsIgnoreCase(saleType)) {
+            return new UnitPriceAndFactor(1, product.getEffectivePiecePrice(), product.getBaseUnit());
+        }
+
+        // If saleType is explicitly "W" (Whole)
+        if ("W".equalsIgnoreCase(saleType)) {
+            int factor = product.getPackSize() != null && product.getPackSize() > 0 ? product.getPackSize() : 1;
+            return new UnitPriceAndFactor(factor, product.getSellingPrice(), product.getBaseUnit());
+        }
+
         if (unitId == null || unitId.equals(product.getBaseUnit().getUnitId())) {
-            return new UnitPriceAndFactor(1, product.getSellingPrice(), product.getBaseUnit());
+            return new UnitPriceAndFactor(1, product.getEffectivePiecePrice(), product.getBaseUnit());
         }
 
         // Look for unit conversion rule (e.g. 1 strip = 10 tabs, 1 box = 100 tabs)
@@ -51,8 +62,12 @@ public class InventoryFefoService {
                 .orElseGet(() -> {
                     UnitOfMeasure requestedUnit = unitOfMeasureRepository.findById(unitId)
                             .orElse(product.getBaseUnit());
-                    return new UnitPriceAndFactor(1, product.getSellingPrice(), requestedUnit);
+                    return new UnitPriceAndFactor(1, product.getEffectivePiecePrice(), requestedUnit);
                 });
+    }
+
+    public UnitPriceAndFactor resolveUnitAndPrice(Product product, Integer unitId) {
+        return resolveUnitAndPrice(product, unitId, null);
     }
 
     /**
@@ -60,11 +75,11 @@ public class InventoryFefoService {
      * Automatically picks the batch that expires earliest.
      */
     @Transactional
-    public AllocatedBatchAllocation allocateBatchFefo(Integer productId, Integer unitId, int quantityRequested) {
+    public AllocatedBatchAllocation allocateBatchFefo(Integer productId, Integer unitId, String saleType, int quantityRequested) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new IllegalArgumentException("Product not found: " + productId));
 
-        UnitPriceAndFactor unitInfo = resolveUnitAndPrice(product, unitId);
+        UnitPriceAndFactor unitInfo = resolveUnitAndPrice(product, unitId, saleType);
         int totalBaseUnitsRequired = quantityRequested * unitInfo.conversionFactor();
 
         LocalDate today = LocalDate.now();
@@ -109,6 +124,11 @@ public class InventoryFefoService {
                 totalBaseUnitsRequired,
                 unitInfo.unitPrice()
         );
+    }
+
+    @Transactional
+    public AllocatedBatchAllocation allocateBatchFefo(Integer productId, Integer unitId, int quantityRequested) {
+        return allocateBatchFefo(productId, unitId, null, quantityRequested);
     }
 }
 

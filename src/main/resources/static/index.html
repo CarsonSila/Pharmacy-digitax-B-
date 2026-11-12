@@ -304,14 +304,14 @@
           <table class="w-full text-left text-xs border-collapse">
             <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[10px]">
               <tr>
-                <th class="p-3">SKU / Barcode</th>
-                <th class="p-3">Medicine & Generic</th>
-                <th class="p-3">Category</th>
-                <th class="p-3">Tax Class</th>
-                <th class="p-3 text-right">Cost Price</th>
-                <th class="p-3 text-right">Selling Price</th>
+                <th class="p-3">Code / SKU</th>
+                <th class="p-3">Medicine Description</th>
+                <th class="p-3 text-center">Pack Size</th>
+                <th class="p-3 text-right">Retail (Whole)</th>
+                <th class="p-3 text-right">Piece Price</th>
+                <th class="p-3 text-center">In Stock (W/P)</th>
+                <th class="p-3 text-center">Actual (Pcs)</th>
                 <th class="p-3 text-center">Margin</th>
-                <th class="p-3 text-center">In Stock</th>
                 <th class="p-3 text-center">Actions</th>
               </tr>
             </thead>
@@ -706,32 +706,66 @@
             <input type="text" id="prod-hscode" value="3004.10.00" class="w-full p-2 border border-slate-300 rounded font-mono">
           </div>
         </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block font-bold text-slate-600 mb-1">Buying Cost (KES)</label>
-            <input type="number" step="0.01" id="prod-cost-price" value="0.00" class="w-full p-2 border border-slate-300 rounded font-mono">
+        <!-- Pack Size & Pricing Configuration (Pieces vs Wholes) -->
+        <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-700 text-[11px] uppercase flex items-center gap-1.5">
+              <i class="fa-solid fa-boxes-packing text-emerald-600"></i> Pack Size & Dispensing Units
+            </span>
+            <span class="text-[10px] text-slate-400">e.g. 100 for 100s, 1 for syrups/creams</span>
           </div>
-          <div>
-            <label class="block font-bold text-slate-600 mb-1">Selling Price (KES) *</label>
-            <input type="number" step="0.01" required id="prod-selling-price" placeholder="0.00" class="w-full p-2 border border-slate-300 rounded font-mono font-bold text-emerald-700">
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block font-bold text-slate-600 text-[10px] mb-0.5">Pack Size (Pcs per Box) *</label>
+              <input type="number" min="1" id="prod-pack-size" value="100" class="w-full p-1.5 border border-slate-300 rounded font-bold font-mono text-emerald-800" onchange="recalcPricesFromPackSize()">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-600 text-[10px] mb-0.5">Whole Pack Retail (KES) *</label>
+              <input type="number" step="0.5" required id="prod-selling-price" placeholder="400.00" class="w-full p-1.5 border border-slate-300 rounded font-mono font-bold text-emerald-700" oninput="recalcPiecePriceFromWhole()">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-600 text-[10px] mb-0.5">Single Piece Retail (KES) *</label>
+              <input type="number" step="0.1" id="prod-piece-price" placeholder="5.00" class="w-full p-1.5 border border-slate-300 rounded font-mono font-bold text-emerald-700" title="Dispensing price per tablet/piece">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/60">
+            <div>
+              <label class="block text-slate-500 text-[10px] mb-0.5">Buying Cost (Whole Pack)</label>
+              <input type="number" step="0.5" id="prod-cost-price" value="0.00" class="w-full p-1.5 border border-slate-300 rounded font-mono" oninput="recalcPieceCostFromWhole()">
+            </div>
+            <div>
+              <label class="block text-slate-500 text-[10px] mb-0.5">Buying Cost (Single Piece)</label>
+              <input type="number" step="0.1" id="prod-piece-cost" value="0.00" class="w-full p-1.5 border border-slate-300 rounded font-mono" readonly>
+            </div>
           </div>
         </div>
 
-        <!-- Initial Batch Details -->
+        <!-- Initial Stock Details (Wholes & Pieces) -->
         <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-          <p class="font-bold text-slate-700 text-[11px] uppercase">Initial Batch Details (Stock-In)</p>
-          <div class="grid grid-cols-3 gap-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-700 text-[11px] uppercase flex items-center gap-1.5">
+              <i class="fa-solid fa-truck-ramp-box text-emerald-600"></i> Initial Stock-In Batch
+            </span>
+            <span id="initial-stock-total-display" class="text-[10px] font-bold text-emerald-700 font-mono">Total: 100 Pieces (1W 0P)</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="block text-slate-500 text-[10px] mb-0.5">Batch Number</label>
-              <input type="text" id="prod-batch-no" value="BATCH-001" class="w-full p-1.5 border border-slate-300 rounded">
+              <input type="text" id="prod-batch-no" value="BATCH-001" class="w-full p-1.5 border border-slate-300 rounded font-mono">
             </div>
             <div>
               <label class="block text-slate-500 text-[10px] mb-0.5">Expiry Date</label>
               <input type="date" id="prod-expiry-date" class="w-full p-1.5 border border-slate-300 rounded">
             </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
             <div>
-              <label class="block text-slate-500 text-[10px] mb-0.5">Initial Quantity</label>
-              <input type="number" id="prod-initial-qty" value="100" class="w-full p-1.5 border border-slate-300 rounded">
+              <label class="block font-bold text-slate-600 text-[10px] mb-0.5">Initial Wholes (Boxes/Packs)</label>
+              <input type="number" min="0" id="prod-initial-wholes" value="1" class="w-full p-1.5 border border-slate-300 rounded font-mono font-bold" oninput="recalcInitialStockPcs()">
+            </div>
+            <div>
+              <label class="block font-bold text-slate-600 text-[10px] mb-0.5">Initial Loose Pieces</label>
+              <input type="number" min="0" id="prod-initial-pieces" value="0" class="w-full p-1.5 border border-slate-300 rounded font-mono font-bold" oninput="recalcInitialStockPcs()">
             </div>
           </div>
         </div>
@@ -1404,49 +1438,80 @@
         const badgeColor = isExempt ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800';
         const badgeText = isExempt ? '[E] Exempt 0%' : '[A] 16% VAT';
 
-        const hasConversions = p.unitConversions && p.unitConversions.length > 0;
-        const uomLabel = p.baseUnit ? (p.baseUnit.symbol || p.baseUnit.name) : 'unit';
+        const packSize = p.packSize && p.packSize > 0 ? p.packSize : 1;
+        const wholeSell = p.sellingPrice || 0;
+        const pieceSell = p.pieceSellingPrice || (packSize > 0 ? (wholeSell / packSize) : wholeSell);
+        const totalPcs = (typeof p.totalStock === 'number') ? p.totalStock : 0;
+        const wholesCount = Math.floor(totalPcs / packSize);
+        const pcsRemainder = totalPcs % packSize;
+        const stockNotation = `${wholesCount}W ${pcsRemainder}P`;
 
         const card = document.createElement("div");
-        card.className = "bg-white p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:shadow-md transition cursor-pointer flex flex-col justify-between active:scale-[0.99]";
+        card.className = "bg-white p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:shadow-md transition flex flex-col justify-between";
         card.innerHTML = `
           <div>
             <div class="flex items-start justify-between gap-1">
               <span class="text-[9px] font-bold px-1.5 py-0.5 rounded ${badgeColor}">${badgeText}</span>
-              <span class="text-[9px] text-slate-400 font-mono">${p.sku}</span>
+              <span class="text-[9px] bg-slate-100 text-slate-600 font-mono font-bold px-1.5 py-0.5 rounded">Pack: ${packSize}</span>
             </div>
-            <h3 class="font-bold text-slate-800 text-xs sm:text-sm mt-1 leading-snug">${p.brandName}</h3>
-            <p class="text-[10px] text-slate-500 italic">${p.genericName || ''}</p>
+            <h3 class="font-bold text-slate-800 text-xs sm:text-sm mt-1.5 leading-snug">${p.brandName}</h3>
+            <p class="text-[10px] text-slate-500 italic truncate">${p.genericName || ''}</p>
+            <div class="mt-1 flex items-center justify-between text-[10px]">
+              <span class="text-slate-400 font-mono">${p.sku}</span>
+              <span class="font-bold font-mono px-1.5 py-0.2 rounded ${totalPcs > 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-700'}">
+                Stock: ${stockNotation}
+              </span>
+            </div>
           </div>
-          <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between">
-            <div>
-              <div class="text-xs sm:text-sm font-black text-emerald-700 font-mono">KES ${p.sellingPrice.toFixed(2)}</div>
-              <div class="text-[9px] text-slate-400">per ${uomLabel} ${hasConversions ? '<span class="text-[8px] bg-emerald-50 text-emerald-700 font-semibold px-1 rounded border border-emerald-200">Wholes & Pieces</span>' : ''}</div>
+          <div class="mt-2.5 pt-2 border-t border-slate-100 flex flex-col gap-1.5">
+            <div class="flex items-center justify-between text-xs font-mono">
+              <span class="text-slate-500 text-[10px]">Whole: <strong class="text-emerald-800 font-bold">KES ${wholeSell.toFixed(2)}</strong></span>
+              ${packSize > 1 ? `<span class="text-slate-500 text-[10px]">Piece: <strong class="text-emerald-600 font-bold">KES ${pieceSell.toFixed(2)}</strong></span>` : ''}
             </div>
-            <button class="bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white px-2 py-1 rounded text-xs font-bold transition flex items-center space-x-1">
-              <span>+ Add</span>
-            </button>
+            <div class="flex items-center gap-1.5">
+              ${packSize > 1 ? `
+              <button type="button" class="flex-1 bg-amber-50 hover:bg-amber-600 text-amber-800 hover:text-white py-1 px-1.5 rounded text-[11px] font-bold transition flex items-center justify-center gap-1 border border-amber-200" onclick="addToCart(allProducts.find(x => x.productId === ${p.productId}), 'P')">
+                <i class="fa-solid fa-tablets"></i> <span>+1 Piece [P]</span>
+              </button>
+              <button type="button" class="flex-1 bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white py-1 px-1.5 rounded text-[11px] font-bold transition flex items-center justify-center gap-1 border border-emerald-200" onclick="addToCart(allProducts.find(x => x.productId === ${p.productId}), 'W')">
+                <i class="fa-solid fa-box"></i> <span>+1 Whole [W]</span>
+              </button>
+              ` : `
+              <button type="button" class="w-full bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white py-1 px-2 rounded text-xs font-bold transition flex items-center justify-center gap-1 border border-emerald-200" onclick="addToCart(allProducts.find(x => x.productId === ${p.productId}), 'W')">
+                <span>+ Add Item</span>
+              </button>
+              `}
+            </div>
           </div>
         `;
-        card.addEventListener("click", () => addToCart(p));
         productsGrid.appendChild(card);
       });
     }
 
-    function addToCart(product) {
-      const existing = cart.find(item => item.product.productId === product.productId && item.unitId === product.baseUnit.unitId);
+    function addToCart(product, defaultMode = null) {
+      const packSize = product.packSize && product.packSize > 0 ? product.packSize : 1;
+      const wholePrice = product.sellingPrice || 0;
+      const piecePrice = product.pieceSellingPrice || (packSize > 0 ? (wholePrice / packSize) : wholePrice);
+
+      // Determine initial mode: "P" (Piece) or "W" (Whole)
+      const mode = defaultMode || ((packSize > 1) ? 'P' : 'W');
+      const activePrice = (mode === 'W') ? wholePrice : piecePrice;
+      const unitFactor = (mode === 'W') ? packSize : 1;
+
+      // Find if already exists with same product and same saleType
+      const existing = cart.find(item => item.product.productId === product.productId && item.saleType === mode);
       if (existing) {
         existing.quantity += 1;
       } else {
         cart.push({
           product: product,
-          unitId: product.baseUnit.unitId,
-          unitName: product.baseUnit.name,
-          unitSymbol: product.baseUnit.symbol,
-          unitFactor: 1,
+          saleType: mode, // "P" (Piece) or "W" (Whole)
+          unitId: null,
+          unitName: (mode === 'W') ? `Whole Pack (${packSize}s)` : `Piece (${product.baseUnit ? product.baseUnit.symbol : 'tab'})`,
+          unitFactor: unitFactor,
           quantity: 1,
-          unitPrice: product.sellingPrice,
-          catalogPrice: product.sellingPrice
+          unitPrice: activePrice,
+          catalogPrice: activePrice
         });
       }
       renderCart();
@@ -1482,6 +1547,7 @@
 
       cart.forEach((item, index) => {
         const p = item.product;
+        const packSize = p.packSize && p.packSize > 0 ? p.packSize : 1;
         const lineTotal = item.unitPrice * item.quantity;
         subtotal += lineTotal;
         totalQty += item.quantity;
@@ -1495,37 +1561,35 @@
           vatTotal += (lineTotal - lineNet);
         }
 
-        const convs = p.unitConversions || [];
-        const baseUnitSym = (p.baseUnit && p.baseUnit.symbol) ? p.baseUnit.symbol : 'tab';
-
-        // Options for unit select (Pieces vs Whole Packs / Strips)
-        let unitOptionsHtml = `<option value="base" ${item.unitId === p.baseUnit.unitId ? 'selected' : ''}>1 Piece / ${baseUnitSym} (KES ${p.sellingPrice.toFixed(2)})</option>`;
-        convs.forEach(c => {
-          const isSel = (item.unitId === c.unit.unitId) ? 'selected' : '';
-          unitOptionsHtml += `<option value="${c.unit.unitId}" ${isSel}>${c.unit.name} (x${c.conversionFactor}) - KES ${c.sellingPrice.toFixed(2)}</option>`;
-        });
-
-        // Profit margin calculation
-        const unitFactor = item.unitFactor || 1;
-        const unitCost = (p.costPrice || 0) * unitFactor;
+        // Cost & Margin (Matches Kenyan Pharmacy System Image 2/3)
+        const unitCost = (item.saleType === 'W')
+          ? (p.costPrice || 0)
+          : (p.pieceCostPrice || ((p.costPrice || 0) / packSize));
         const unitProfit = item.unitPrice - unitCost;
         const marginPct = item.unitPrice > 0 ? ((unitProfit / item.unitPrice) * 100) : 0;
-        const isCustomPrice = Math.abs(item.unitPrice - (item.catalogPrice || p.sellingPrice)) > 0.01;
+        const isCustomPrice = Math.abs(item.unitPrice - (item.catalogPrice || 0)) > 0.01;
 
         const row = document.createElement("div");
         row.className = "p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex flex-col gap-1.5 shadow-sm";
         row.innerHTML = `
           <div class="flex items-start justify-between">
             <div class="flex-1 pr-1">
-              <div class="flex items-center gap-1.5">
+              <div class="flex items-center gap-1.5 flex-wrap">
                 <h4 class="font-bold text-xs text-slate-800 leading-tight">${p.brandName}</h4>
+                <span class="text-[9px] text-slate-500 font-mono font-bold bg-white px-1.5 py-0.2 rounded border border-slate-200">Units: ${packSize}</span>
                 ${isCustomPrice ? '<span class="text-[9px] bg-amber-100 text-amber-800 px-1 py-0.2 rounded font-semibold border border-amber-300">Custom Price</span>' : ''}
               </div>
-              <div class="flex items-center gap-1.5 mt-1 flex-wrap">
-                <select class="text-[10px] font-semibold bg-white border border-slate-300 rounded px-1.5 py-0.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-sm" onchange="changeCartItemUnit(${index}, this.value)">
-                  ${unitOptionsHtml}
-                </select>
-                <span class="text-[9px] text-slate-400 font-mono">Cost: KES ${unitCost.toFixed(1)}</span>
+              <div class="flex items-center gap-2 mt-1.5">
+                <!-- P (Piece) vs W (Whole) Selector (Client System Standard) -->
+                <div class="inline-flex rounded-lg border border-slate-300 bg-white p-0.5 shadow-sm text-[10px] font-bold">
+                  <button type="button" class="px-2 py-0.5 rounded ${item.saleType === 'P' ? 'bg-amber-600 text-white shadow' : 'text-slate-600 hover:text-slate-900'}" onclick="setCartItemMode(${index}, 'P')">
+                    [P] Piece
+                  </button>
+                  <button type="button" class="px-2 py-0.5 rounded ${item.saleType === 'W' ? 'bg-emerald-700 text-white shadow' : 'text-slate-600 hover:text-slate-900'}" onclick="setCartItemMode(${index}, 'W')">
+                    [W] Whole (${packSize}s)
+                  </button>
+                </div>
+                <span class="text-[9px] text-slate-400 font-mono">Cost: KES ${unitCost.toFixed(2)}</span>
               </div>
             </div>
             <button class="text-slate-400 hover:text-rose-600 text-xs ml-1" onclick="removeItem(${index})" title="Remove item">
@@ -1537,24 +1601,25 @@
             <!-- Quantity Counter -->
             <div class="flex items-center border border-slate-300 rounded-lg bg-white overflow-hidden shadow-sm">
               <button class="px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100 font-bold" onclick="updateQty(${index}, -1)">-</button>
-              <input type="number" min="1" value="${item.quantity}" class="w-8 text-center text-xs font-bold font-mono focus:outline-none" onchange="setQty(${index}, this.value)">
+              <input type="number" min="1" value="${item.quantity}" class="w-9 text-center text-xs font-bold font-mono focus:outline-none" onchange="setQty(${index}, this.value)">
               <button class="px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100 font-bold" onclick="updateQty(${index}, 1)">+</button>
             </div>
 
-            <!-- Price override & Profit Margin -->
+            <!-- Price Override & Margin Indicator (Image 2/3: Margin: 89.8) -->
             <div class="flex items-center space-x-2">
               <div class="text-right">
                 <div class="flex items-center justify-end space-x-1">
                   <span class="text-[10px] text-slate-500 font-semibold">@ KES</span>
-                  <input type="number" step="0.5" min="0" value="${item.unitPrice.toFixed(2)}" class="w-16 px-1 py-0.5 text-xs font-mono font-bold border border-slate-300 rounded bg-white text-right focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 shadow-sm" onchange="updateItemPrice(${index}, this.value)" title="Click to override counter price and adjust profit margin">
+                  <input type="number" step="0.5" min="0" value="${item.unitPrice.toFixed(2)}" class="w-16 px-1 py-0.5 text-xs font-mono font-bold border border-slate-300 rounded bg-white text-right focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 shadow-sm" onchange="updateItemPrice(${index}, this.value)" title="Counter selling price (adjust margin)">
                 </div>
-                <div class="text-[9px] font-bold ${marginPct >= 20 ? 'text-emerald-700' : (marginPct > 0 ? 'text-amber-700' : 'text-rose-600')}">
-                  ${marginPct >= 0 ? '+' : ''}${marginPct.toFixed(0)}% (${unitProfit >= 0 ? '+' : ''}${unitProfit.toFixed(1)} KES/u)
+                <!-- Margin Banner matching client screenshot: 'Margin: 89.8' -->
+                <div class="text-[10px] font-black font-mono ${marginPct >= 20 ? 'text-emerald-700' : (marginPct > 0 ? 'text-amber-700' : 'text-rose-600')}">
+                  Margin: ${marginPct.toFixed(1)}%
                 </div>
               </div>
-              <div class="text-right min-w-[64px]">
+              <div class="text-right min-w-[70px]">
                 <span class="font-bold text-xs text-slate-800 font-mono block">KES ${lineTotal.toFixed(2)}</span>
-                <span class="text-[9px] text-slate-400 font-mono">${item.quantity} ${item.unitSymbol || baseUnitSym}</span>
+                <span class="text-[9px] text-slate-400 font-mono">${item.quantity} ${item.saleType === 'W' ? 'wholes' : 'pcs'}</span>
               </div>
             </div>
           </div>
@@ -1572,28 +1637,25 @@
       updateFloatingBar();
     }
 
-    window.changeCartItemUnit = function(index, value) {
+    window.setCartItemMode = function(index, mode) {
       const item = cart[index];
       if (!item) return;
       const p = item.product;
+      const packSize = p.packSize && p.packSize > 0 ? p.packSize : 1;
+      const wholePrice = p.sellingPrice || 0;
+      const piecePrice = p.pieceSellingPrice || (packSize > 0 ? (wholePrice / packSize) : wholePrice);
 
-      if (value === "base" || value === String(p.baseUnit.unitId)) {
-        item.unitId = p.baseUnit.unitId;
-        item.unitName = p.baseUnit.name;
-        item.unitSymbol = p.baseUnit.symbol;
-        item.unitFactor = 1;
-        item.unitPrice = p.sellingPrice;
-        item.catalogPrice = p.sellingPrice;
+      item.saleType = mode;
+      if (mode === 'W') {
+        item.unitName = `Whole Pack (${packSize}s)`;
+        item.unitFactor = packSize;
+        item.unitPrice = wholePrice;
+        item.catalogPrice = wholePrice;
       } else {
-        const conv = (p.unitConversions || []).find(c => String(c.unit.unitId) === String(value));
-        if (conv) {
-          item.unitId = conv.unit.unitId;
-          item.unitName = conv.unit.name;
-          item.unitSymbol = conv.unit.symbol;
-          item.unitFactor = conv.conversionFactor;
-          item.unitPrice = conv.sellingPrice;
-          item.catalogPrice = conv.sellingPrice;
-        }
+        item.unitName = `Piece (${p.baseUnit ? p.baseUnit.symbol : 'tab'})`;
+        item.unitFactor = 1;
+        item.unitPrice = piecePrice;
+        item.catalogPrice = piecePrice;
       }
       renderCart();
     };
@@ -1747,6 +1809,7 @@
         items: cart.map(i => ({
           productId: i.product.productId,
           unitId: i.unitId,
+          saleType: i.saleType || 'P',
           quantity: i.quantity,
           customUnitPrice: i.unitPrice,
           unitPrice: i.unitPrice,
@@ -1865,29 +1928,41 @@
         tbody.innerHTML = "";
 
         allProducts.forEach(p => {
-          const cost = p.costPrice || 0;
-          const sell = p.sellingPrice || 0;
-          const margin = sell > 0 ? (((sell - cost) / sell) * 100).toFixed(1) : 0;
-          const isExempt = p.taxClassification.classCode === 'EXEMPT';
+          const packSize = p.packSize && p.packSize > 0 ? p.packSize : 1;
+          const wholeSell = p.sellingPrice || 0;
+          const pieceSell = p.pieceSellingPrice || (packSize > 0 ? wholeSell / packSize : wholeSell);
+          const wholeCost = p.costPrice || 0;
+          const margin = wholeSell > 0 ? (((wholeSell - wholeCost) / wholeSell) * 100).toFixed(1) : 0;
+          
+          const totalPcs = (typeof p.totalStock === 'number') ? p.totalStock : 0;
+          const wholesCount = Math.floor(totalPcs / packSize);
+          const pcsRemainder = totalPcs % packSize;
+          const inStockNotation = `${wholesCount}W ${pcsRemainder}P`;
 
           const tr = document.createElement("tr");
           tr.className = "hover:bg-slate-50 transition";
           tr.innerHTML = `
-            <td class="p-3 font-mono text-slate-500">${p.sku}</td>
+            <td class="p-3 font-mono text-slate-500 font-bold">${p.sku}</td>
             <td class="p-3">
               <span class="font-bold text-slate-800">${p.brandName}</span>
               <p class="text-[10px] text-slate-400 italic">${p.genericName || ''}</p>
             </td>
-            <td class="p-3"><span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold">${p.category ? p.category.name : '-'}</span></td>
-            <td class="p-3"><span class="${isExempt ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'} px-2 py-0.5 rounded text-[10px] font-bold">${p.taxClassification.classCode}</span></td>
-            <td class="p-3 text-right font-mono text-slate-600">KES ${cost.toFixed(2)}</td>
-            <td class="p-3 text-right font-mono font-bold text-emerald-700">KES ${sell.toFixed(2)}</td>
-            <td class="p-3 text-center font-bold ${margin > 20 ? 'text-emerald-600' : 'text-amber-600'}">${margin}%</td>
-            <td class="p-3 text-center font-bold text-slate-800">Available</td>
+            <td class="p-3 text-center">
+              <span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[10px] font-bold font-mono">${packSize}</span>
+            </td>
+            <td class="p-3 text-right font-mono font-bold text-emerald-800">KES ${wholeSell.toFixed(2)}</td>
+            <td class="p-3 text-right font-mono font-bold text-emerald-600">KES ${pieceSell.toFixed(2)}</td>
+            <td class="p-3 text-center">
+              <span class="font-bold font-mono px-2 py-0.5 rounded text-[11px] ${totalPcs > 0 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}">
+                ${inStockNotation}
+              </span>
+            </td>
+            <td class="p-3 text-center font-mono font-bold text-slate-700">${totalPcs}</td>
+            <td class="p-3 text-center font-bold ${margin >= 20 ? 'text-emerald-600' : 'text-amber-600'} font-mono">${margin}%</td>
             <td class="p-3 text-center">
               ${manager ? `
               <button class="btn-edit-price bg-slate-100 hover:bg-emerald-600 hover:text-white text-slate-700 px-2.5 py-1 rounded text-xs font-bold transition"
-                      data-id="${p.productId}" data-name="${p.brandName}" data-cost="${cost}" data-sell="${sell}">
+                      data-id="${p.productId}" data-name="${p.brandName}" data-cost="${wholeCost}" data-sell="${wholeSell}">
                 <i class="fa-solid fa-pen-to-square"></i> Price
               </button>` : `
               <span class="text-[10px] text-slate-400 italic flex items-center gap-1"><i class="fa-solid fa-lock text-slate-300"></i> Manager only</span>`}
@@ -2013,11 +2088,16 @@
         const sku = document.getElementById("prod-sku").value.trim() || ("SKU-" + Date.now().toString().slice(-6));
         const barcode = document.getElementById("prod-barcode").value.trim() || null;
         const hsCode = document.getElementById("prod-hscode").value.trim() || "3004.90.00";
-        const costPrice = parseFloat(document.getElementById("prod-cost-price").value) || 0;
+        const packSize = parseInt(document.getElementById("prod-pack-size").value) || 100;
         const sellingPrice = parseFloat(document.getElementById("prod-selling-price").value);
+        const piecePrice = parseFloat(document.getElementById("prod-piece-price").value) || (sellingPrice / packSize);
+        const costPrice = parseFloat(document.getElementById("prod-cost-price").value) || 0;
+        const pieceCost = parseFloat(document.getElementById("prod-piece-cost").value) || (costPrice / packSize);
         const batchNo = document.getElementById("prod-batch-no").value.trim() || ("BT-" + Date.now().toString().slice(-4));
         const expiryDate = document.getElementById("prod-expiry-date").value || null;
-        const initialQty = parseInt(document.getElementById("prod-initial-qty").value) || 50;
+        const initialWholes = parseInt(document.getElementById("prod-initial-wholes").value) || 0;
+        const initialPieces = parseInt(document.getElementById("prod-initial-pieces").value) || 0;
+        const totalPieces = (initialWholes * packSize) + initialPieces;
 
         const payload = {
           brandName,
@@ -2030,10 +2110,15 @@
           hsCode,
           costPrice,
           sellingPrice,
+          packSize,
+          pieceSellingPrice: piecePrice,
+          pieceCostPrice: pieceCost,
           reorderLevel: 20,
           initialBatchNumber: batchNo,
           initialExpiryDate: expiryDate,
-          initialStockQuantity: initialQty,
+          initialStockQuantity: totalPieces,
+          initialWholes,
+          initialPieces,
           supplierName: "Harleys Ltd"
         };
 
@@ -2856,5 +2941,44 @@
       }, 400);
     });
   </script>
+
+    // --- Helper calculations for Add Medication Modal (Pieces & Wholes) ---
+    window.recalcPricesFromPackSize = function() {
+      const pack = parseInt(document.getElementById("prod-pack-size").value) || 1;
+      const wholeSell = parseFloat(document.getElementById("prod-selling-price").value) || 0;
+      if (wholeSell > 0 && pack > 0) {
+        document.getElementById("prod-piece-price").value = (wholeSell / pack).toFixed(2);
+      }
+      recalcPieceCostFromWhole();
+      recalcInitialStockPcs();
+    };
+
+    window.recalcPiecePriceFromWhole = function() {
+      const pack = parseInt(document.getElementById("prod-pack-size").value) || 1;
+      const wholeSell = parseFloat(document.getElementById("prod-selling-price").value) || 0;
+      if (pack > 0) {
+        document.getElementById("prod-piece-price").value = (wholeSell / pack).toFixed(2);
+      }
+    };
+
+    window.recalcPieceCostFromWhole = function() {
+      const pack = parseInt(document.getElementById("prod-pack-size").value) || 1;
+      const wholeCost = parseFloat(document.getElementById("prod-cost-price").value) || 0;
+      if (pack > 0) {
+        document.getElementById("prod-piece-cost").value = (wholeCost / pack).toFixed(2);
+      }
+    };
+
+    window.recalcInitialStockPcs = function() {
+      const pack = parseInt(document.getElementById("prod-pack-size").value) || 1;
+      const wholes = parseInt(document.getElementById("prod-initial-wholes").value) || 0;
+      const pieces = parseInt(document.getElementById("prod-initial-pieces").value) || 0;
+      const total = (wholes * pack) + pieces;
+      const displayEl = document.getElementById("initial-stock-total-display");
+      if (displayEl) {
+        displayEl.textContent = `Total: ${total} Pieces (${wholes}W ${pieces}P)`;
+      }
+    };
+
 </body>
 </html>

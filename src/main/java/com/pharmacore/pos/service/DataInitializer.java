@@ -254,6 +254,21 @@ public class DataInitializer implements CommandLineRunner {
         UnitOfMeasure unit          = uomLookup.apply(uomName);
         TaxClassification taxClass  = taxLookup.apply(taxCode);
 
+        int pack = 1;
+        String uLower = uomName.toLowerCase();
+        if (uLower.contains("100")) pack = 100;
+        else if (uLower.contains("30")) pack = 30;
+        else if (uLower.contains("24")) pack = 24;
+        else if (uLower.contains("14")) pack = 14;
+        else if (uLower.contains("10")) pack = 10;
+        else if (uLower.contains("6")) pack = 6;
+        else if (uLower.contains("tablet") || uLower.contains("capsule")) pack = 100;
+
+        BigDecimal wholeSell = new BigDecimal(sellingPriceStr);
+        BigDecimal pieceSell = wholeSell.divide(BigDecimal.valueOf(pack), 2, java.math.RoundingMode.HALF_UP);
+        BigDecimal wholeCost = new BigDecimal(costPriceStr);
+        BigDecimal pieceCost = wholeCost.divide(BigDecimal.valueOf(pack), 2, java.math.RoundingMode.HALF_UP);
+
         Product product = Product.builder()
                 .sku(sku)
                 .brandName(brandName)
@@ -262,8 +277,11 @@ public class DataInitializer implements CommandLineRunner {
                 .baseUnit(unit)
                 .taxClassification(taxClass)
                 .hsCode(hsCode)
-                .costPrice(new BigDecimal(costPriceStr))
-                .sellingPrice(new BigDecimal(sellingPriceStr))
+                .costPrice(wholeCost)
+                .sellingPrice(wholeSell)
+                .packSize(pack)
+                .pieceSellingPrice(pieceSell)
+                .pieceCostPrice(pieceCost)
                 .build();
         productRepository.save(product);
 
@@ -286,6 +304,17 @@ public class DataInitializer implements CommandLineRunner {
     // -------------------------------------------------------------------------
 
     private void initProductUnitConversions() {
+        // Configure Pack Sizes and Piece Prices (Kenyan Pharmacy Chemist standard)
+        updateProductPackConfig("PCM-500", 100, new BigDecimal("400.00"), new BigDecimal("5.00"), new BigDecimal("2.00"));
+        updateProductPackConfig("PAN-EXT", 100, new BigDecimal("350.00"), new BigDecimal("5.00"), new BigDecimal("2.00"));
+        updateProductPackConfig("IBU-400", 100, new BigDecimal("900.00"), new BigDecimal("12.00"), new BigDecimal("5.00"));
+        updateProductPackConfig("AMX-500", 100, new BigDecimal("1500.00"), new BigDecimal("18.00"), new BigDecimal("8.00"));
+        updateProductPackConfig("AUG-625", 14,  new BigDecimal("1400.00"), new BigDecimal("110.00"), new BigDecimal("55.00"));
+        updateProductPackConfig("COAR-6",  24,  new BigDecimal("1200.00"), new BigDecimal("55.00"), new BigDecimal("25.00"));
+        updateProductPackConfig("AML-5",   30,  new BigDecimal("400.00"), new BigDecimal("18.00"), new BigDecimal("8.00"));
+        updateProductPackConfig("MET-500", 100, new BigDecimal("850.00"), new BigDecimal("12.00"), new BigDecimal("5.00"));
+        updateProductPackConfig("OMP-20",  30,  new BigDecimal("700.00"), new BigDecimal("28.00"), new BigDecimal("12.00"));
+
         // Panadol: Base = Tablet (1 piece). Strips (10) and Whole Pack (100)
         seedConversion("PCM-500", "Strip (10 Tabs)", 10, new BigDecimal("45.00"));
         seedConversion("PCM-500", "Pack (100 Tabs)", 100, new BigDecimal("400.00"));
@@ -316,6 +345,18 @@ public class DataInitializer implements CommandLineRunner {
         // Omeprazole 20mg: Base = Capsule. Strip (10) and Monthly Pack (30)
         seedConversion("OMP-20",  "Strip (10 Tabs)", 10, new BigDecimal("250.00"));
         seedConversion("OMP-20",  "Pack (30 Tabs)", 30, new BigDecimal("700.00"));
+    }
+
+    private void updateProductPackConfig(String sku, int packSize, BigDecimal wholePrice, BigDecimal piecePrice, BigDecimal pieceCost) {
+        productRepository.findBySku(sku).ifPresent(prod -> {
+            prod.setPackSize(packSize);
+            if (wholePrice != null) prod.setSellingPrice(wholePrice);
+            if (piecePrice != null) prod.setPieceSellingPrice(piecePrice);
+            if (pieceCost != null) prod.setPieceCostPrice(pieceCost);
+            productRepository.save(prod);
+            log.info("Configured pack settings for {}: PackSize={}, WholePrice={}, PiecePrice={}",
+                    prod.getBrandName(), packSize, wholePrice, piecePrice);
+        });
     }
 
     private void seedConversion(String sku, String uomName, int factor, BigDecimal price) {

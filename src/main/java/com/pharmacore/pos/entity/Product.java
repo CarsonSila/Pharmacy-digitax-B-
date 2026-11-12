@@ -58,6 +58,19 @@ public class Product {
     @Column(name = "selling_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal sellingPrice;
 
+    @Column(name = "pack_size", nullable = false)
+    @Builder.Default
+    private Integer packSize = 1; // Pack size (e.g. 100 for 100s, 1 for syrups/creams)
+
+    @Column(name = "piece_selling_price", precision = 12, scale = 2)
+    private BigDecimal pieceSellingPrice; // Selling price per individual piece/tablet
+
+    @Column(name = "piece_cost_price", precision = 12, scale = 2)
+    private BigDecimal pieceCostPrice; // Cost price per individual piece
+
+    @Transient
+    private Integer totalStock; // Computed available stock in pieces
+
     @Column(name = "reorder_level")
     @Builder.Default
     private Integer reorderLevel = 20;
@@ -90,6 +103,26 @@ public class Product {
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public BigDecimal getEffectivePiecePrice() {
+        if (pieceSellingPrice != null && pieceSellingPrice.compareTo(BigDecimal.ZERO) > 0) {
+            return pieceSellingPrice;
+        }
+        if (packSize != null && packSize > 0 && sellingPrice != null) {
+            return sellingPrice.divide(BigDecimal.valueOf(packSize), 2, java.math.RoundingMode.HALF_UP);
+        }
+        return sellingPrice != null ? sellingPrice : BigDecimal.ZERO;
+    }
+
+    public BigDecimal getEffectivePieceCost() {
+        if (pieceCostPrice != null && pieceCostPrice.compareTo(BigDecimal.ZERO) > 0) {
+            return pieceCostPrice;
+        }
+        if (packSize != null && packSize > 0 && costPrice != null) {
+            return costPrice.divide(BigDecimal.valueOf(packSize), 2, java.math.RoundingMode.HALF_UP);
+        }
+        return costPrice != null ? costPrice : BigDecimal.ZERO;
     }
 }
 

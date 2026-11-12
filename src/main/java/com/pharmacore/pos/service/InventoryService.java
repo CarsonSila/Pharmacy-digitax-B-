@@ -59,6 +59,19 @@ public class InventoryService {
         TaxClassification taxClassification = taxClassificationRepository.findById(req.getTaxClassId() != null ? req.getTaxClassId() : 1)
                 .orElseThrow(() -> new IllegalArgumentException("Tax Classification not found with ID: " + req.getTaxClassId()));
 
+        int packSize = req.getPackSize() != null && req.getPackSize() > 0 ? req.getPackSize() : 1;
+        java.math.BigDecimal sellingPrice = req.getSellingPrice();
+        java.math.BigDecimal piecePrice = req.getPieceSellingPrice();
+        if (piecePrice == null && sellingPrice != null && packSize > 0) {
+            piecePrice = sellingPrice.divide(java.math.BigDecimal.valueOf(packSize), 2, java.math.RoundingMode.HALF_UP);
+        }
+
+        java.math.BigDecimal costPrice = req.getCostPrice() != null ? req.getCostPrice() : java.math.BigDecimal.ZERO;
+        java.math.BigDecimal pieceCost = req.getPieceCostPrice();
+        if (pieceCost == null && costPrice != null && packSize > 0) {
+            pieceCost = costPrice.divide(java.math.BigDecimal.valueOf(packSize), 2, java.math.RoundingMode.HALF_UP);
+        }
+
         Product product = Product.builder()
                 .brandName(req.getBrandName())
                 .genericName(req.getGenericName())
@@ -69,31 +82,46 @@ public class InventoryService {
                 .taxClassification(taxClassification)
                 .hsCode(req.getHsCode() != null && !req.getHsCode().isBlank() ? req.getHsCode() : "3004.90.00")
                 .prescriptionRequired(Boolean.TRUE.equals(req.getPrescriptionRequired()))
-                .costPrice(req.getCostPrice() != null ? req.getCostPrice() : java.math.BigDecimal.ZERO)
-                .sellingPrice(req.getSellingPrice())
+                .costPrice(costPrice)
+                .sellingPrice(sellingPrice)
+                .packSize(packSize)
+                .pieceSellingPrice(piecePrice)
+                .pieceCostPrice(pieceCost)
                 .reorderLevel(req.getReorderLevel() != null ? req.getReorderLevel() : 20)
                 .isActive(true)
                 .build();
 
         Product savedProduct = productRepository.save(product);
-        log.info("Created new pharmacy product: {} (ID: {})", savedProduct.getBrandName(), savedProduct.getProductId());
+        log.info("Created new pharmacy product: {} (ID: {}, PackSize: {})", savedProduct.getBrandName(), savedProduct.getProductId(), packSize);
+
+        // Determine initial stock in total pieces (base units)
+        int initialStockPieces = 0;
+        if (req.getInitialStockQuantity() != null && req.getInitialStockQuantity() > 0) {
+            initialStockPieces = req.getInitialStockQuantity();
+        } else if ((req.getInitialWholes() != null && req.getInitialWholes() > 0) || (req.getInitialPieces() != null && req.getInitialPieces() > 0)) {
+            int wholes = req.getInitialWholes() != null ? req.getInitialWholes() : 0;
+            int pieces = req.getInitialPieces() != null ? req.getInitialPieces() : 0;
+            initialStockPieces = (wholes * packSize) + pieces;
+        }
 
         // Create initial batch if stock details were supplied
-        if (req.getInitialBatchNumber() != null && !req.getInitialBatchNumber().isBlank() && req.getInitialStockQuantity() != null && req.getInitialStockQuantity() > 0) {
+        if (req.getInitialBatchNumber() != null && !req.getInitialBatchNumber().isBlank() && initialStockPieces > 0) {
             ProductBatch batch = ProductBatch.builder()
                     .product(savedProduct)
                     .batchNumber(req.getInitialBatchNumber())
                     .manufacturingDate(LocalDate.now().minusMonths(1))
                     .expiryDate(req.getInitialExpiryDate() != null ? req.getInitialExpiryDate() : LocalDate.now().plusYears(2))
-                    .costPrice(req.getCostPrice() != null ? req.getCostPrice() : java.math.BigDecimal.ZERO)
-                    .quantityAvailable(req.getInitialStockQuantity())
+                    .costPrice(pieceCost != null ? pieceCost : costPrice)
+                    .quantityAvailable(initialStockPieces)
                     .supplierName(req.getSupplierName() != null ? req.getSupplierName() : "Local Pharmaceutical Distributor")
                     .isQuarantined(false)
                     .build();
 
             productBatchRepository.save(batch);
-            log.info("Initialized initial batch {} with {} base units for product {}",
-                    batch.getBatchNumber(), batch.getQuantityAvailable(), savedProduct.getBrandName());
+            log.info("Initialized initial batch {} with {} pieces ({}W {}P) for product {}",
+                    batch.getBatchNumber(), batch.getQuantityAvailable(),
+                    initialStockPieces / packSize, initialStockPieces % packSize,
+                    savedProduct.getBrandName());
         }
 
         return savedProduct;

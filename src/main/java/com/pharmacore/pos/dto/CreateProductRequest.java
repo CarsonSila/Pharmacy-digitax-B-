@@ -17,6 +17,12 @@ public class CreateProductRequest {
     private BigDecimal sellingPrice;
     private Integer reorderLevel = 20;
 
+    private Integer packSize = 1;
+    private BigDecimal pieceSellingPrice;
+    private BigDecimal pieceCostPrice;
+    private Integer initialWholes;
+    private Integer initialPieces;
+
     // Optional initial batch data (so pharmacist can add stock immediately)
     private String initialBatchNumber;
     private LocalDate initialExpiryDate;
@@ -151,6 +157,46 @@ public class CreateProductRequest {
 
     public void setSupplierName(String supplierName) {
         this.supplierName = supplierName;
+    }
+
+    public Integer getPackSize() {
+        return packSize;
+    }
+
+    public void setPackSize(Integer packSize) {
+        this.packSize = packSize;
+    }
+
+    public BigDecimal getPieceSellingPrice() {
+        return pieceSellingPrice;
+    }
+
+    public void setPieceSellingPrice(BigDecimal pieceSellingPrice) {
+        this.pieceSellingPrice = pieceSellingPrice;
+    }
+
+    public BigDecimal getPieceCostPrice() {
+        return pieceCostPrice;
+    }
+
+    public void setPieceCostPrice(BigDecimal pieceCostPrice) {
+        this.pieceCostPrice = pieceCostPrice;
+    }
+
+    public Integer getInitialWholes() {
+        return initialWholes;
+    }
+
+    public void setInitialWholes(Integer initialWholes) {
+        this.initialWholes = initialWholes;
+    }
+
+    public Integer getInitialPieces() {
+        return initialPieces;
+    }
+
+    public void setInitialPieces(Integer initialPieces) {
+        this.initialPieces = initialPieces;
     }
 }
 

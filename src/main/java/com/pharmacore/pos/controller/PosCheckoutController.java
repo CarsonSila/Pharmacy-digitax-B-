@@ -46,10 +46,17 @@ public class PosCheckoutController {
     public ResponseEntity<List<Product>> searchProducts(
             @RequestParam(name = "q", required = false, defaultValue = "") String query
     ) {
-        if (query == null || query.isBlank()) {
-            return ResponseEntity.ok(productRepository.findAll());
+        List<Product> list = (query == null || query.isBlank())
+                ? productRepository.findAll()
+                : productRepository.searchActiveProducts(query.trim());
+
+        LocalDate today = LocalDate.now();
+        for (Product p : list) {
+            List<ProductBatch> batches = productBatchRepository.findAvailableBatchesFefo(p.getProductId(), today);
+            int sum = batches.stream().mapToInt(ProductBatch::getQuantityAvailable).sum();
+            p.setTotalStock(sum);
         }
-        return ResponseEntity.ok(productRepository.searchActiveProducts(query.trim()));
+        return ResponseEntity.ok(list);
     }
 
     /**
